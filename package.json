@@ -1,0 +1,58 @@
+{
+	"name": "ctagssh",
+	"description": "CTags support on SSH",
+	"version": "0.0.1",
+	"publisher": "Kandimus",
+	"repository": "https://github.com/Kandimus/ctagsssh.git",
+	"engines": {
+		"vscode": "^1.64.1"
+	},
+	"activationEvents": [
+		"onCommand:ctagssh.gotoTag",
+		"onCommand:ctagssh.print",
+		"onCommand:ctagssh.test"
+	],
+	"main": "./src/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "ctagssh.test",
+				"title": "ctagssh.test"
+			},
+			{
+				"command": "ctagssh.gotoTag",
+				"title": "ctagssh.gotoTag"
+			},
+			{
+				"command": "ctagssh.print",
+				"title": "ctagssh.print"
+			}
+		],
+		"keybindings": [
+			{
+			  "command": "ctagssh.gotoTag",
+			  "key": "shift+F12",
+			  "mac": "shift+F12",
+			  "when": "editorTextFocus"
+			}
+		]
+	},
+	"dependencies": {
+		"n-readlines": "^0.2.7",
+		"split": "^1.0.0",
+		"sftp-promises": "^1.8.0"
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint . --ext .ts,.tsx",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/node": "^12.12.0",
+		"@types/vscode": "^1.64.1",
+		"sftp-promises": "^1.8.0"
+	}
+}
