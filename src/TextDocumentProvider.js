@@ -11,7 +11,7 @@ var CTagSSHVF = /** @class */ (function ()
 			this.onDidChange = this.onDidChangeEmitter.event;
 
 			this.loadedFile = new Map();
-			this.sftp = new sshClient({host: 'indlin4550', port: '22', username: 'vitalyli', password: '9whR2;NE.'});
+			this.sftp = new sshClient({host: 'indlin4550', port: '22', username: 'vitalyli', password: 'XXXX'});
 			this.sftp.session({host: 'indlin4550', port: '22', username: 'vitalyli', password: '9whR2;NE.'})
 				.then(ftpSession => {
 					this.isConnected = true;
