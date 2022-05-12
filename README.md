@@ -1,21 +1,11 @@
-# Hello World Minimal Sample
+# CTags support on SSH
 
-This is a minimal version of the [Hello World Sample](../helloworld-sample).
+This is a base version of CTagSSH.
 
-It does not use TypeScript and only includes the `vscode` devDependency needed for extension development.
+## Usage
+Extension is not compiled then you need yourself install it to VS Code.
 
-## VS Code API
+[Shift + F12] - go to definition of tag.
 
-### `vscode` module
-
-- [`commands.registerCommand`](https://code.visualstudio.com/api/references/vscode-api#commands.registerCommand)
-- [`window.showInformationMessage`](https://code.visualstudio.com/api/references/vscode-api#window.showInformationMessage)
-
-### Contribution Points
-
-- [`contributes.commands`](https://code.visualstudio.com/api/references/contribution-points#contributes.commands)
-
-## Running the Sample
-
-- Run `npm install` in terminal to install dependencies
-- Run the `Run Extension` target in the Debug View.
+## .ctags file
+File .ctags must be placement to root directory of project.
