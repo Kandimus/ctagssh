@@ -11,12 +11,19 @@ var CTagSSHVF = /** @class */ (function ()
 			this.onDidChange = this.onDidChangeEmitter.event;
 
 			this.loadedFile = new Map();
-			this.sftp = new sshClient({host: 'indlin4550', port: '22', username: 'vitalyli', password: 'XXXX'});
-			this.sftp.session({host: 'indlin4550', port: '22', username: 'vitalyli', password: '9whR2;NE.'})
+		}
+
+		async connectToSHH(config)
+		{
+			this.config = config;
+			console.log(`SSH2 connecting to remote server ${this.config.username}@${this.config.host}:${this.config.port}...`);
+
+			this.sftp = new sshClient();
+			this.sftp.session(this.config)
 				.then(ftpSession => {
 					this.isConnected = true;
 					this.session = ftpSession;
-					console.log('SSH2 connected to remote server');
+					console.log(`SSH2 connected to remote server ${this.config.username}@${this.config.host}:${this.config.port}`);
 				}).catch(() => {
 					console.error('SSH2 catch error');
 				});
@@ -24,14 +31,13 @@ var CTagSSHVF = /** @class */ (function ()
 
 		async preload_file(uri)
 		{
-			console.log(">>> preload_file");
 			if (this.isConnected == false) {
-				throw vscode.FileSystemError.NoPermissions('Can not connect to remote host');
+				throw vscode.FileSystemError.Unavailable('Can not connect to remote host');
 			}
 
 			if (this.loadedFile.has(uri.path)) {
 				this.loadedFile.get(uri.path).date = Date.now();
-				console.log("file found in cache");
+				//console.log("file found in cache");
 				return;
 			}
 
@@ -42,22 +48,23 @@ var CTagSSHVF = /** @class */ (function ()
 						return;
 
 					}).then(undefined, err => {
-						console.error(err.message);
-						throw vscode.FileSystemError.FileNotFound(`${uri}. Error: ${err.message}`);
+						this.isConnected = false;
+						this.session.end();
+						console.error(`sftp.getBuffer returns error:'${err.message}' on load file '${uri}'.`);
+						this.connectToSHH(this.config);
+						throw vscode.FileSystemError.Unavailable(`sftp.getBuffer returns error:'${err.message}' on load file '${uri}'.`);
 					});
 			}
 			catch (err) {
-				console.error(err.message);
-				throw vscode.FileSystemError.FileNotFound(`${uri}. Error: ${err.message}`);
+				this.isConnected = false;
+				this.session.end();
+				console.error(`${uri}. Load file returns error: ${err.message}`);
+				this.connectToSHH(this.config);
+				throw vscode.FileSystemError.FileNotFound(`${uri}. Load file returns error: ${err.message}`);
 			}
 		}
 
 		provideTextDocumentContent(uri) {
-			console.log('>>> provideTextDocumentContent');
-			if (this.isConnected == false) {
-				throw vscode.FileSystemError.NoPermissions('Can not connect to remote host');
-			}
-
 			return this.loadedFile.get(uri.path).text;
 		}
 	}
