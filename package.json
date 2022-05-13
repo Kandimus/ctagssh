@@ -34,10 +34,10 @@
 		],
 		"keybindings": [
 			{
-			  "command": "ctagssh.gotoTag",
-			  "key": "shift+F12",
-			  "mac": "shift+F12",
-			  "when": "editorTextFocus"
+				"command": "ctagssh.gotoTag",
+				"key": "shift+F12",
+				"mac": "shift+F12",
+				"when": "editorTextFocus"
 			}
 		],
 		"configuration": {
@@ -75,7 +75,7 @@
 	"dependencies": {
 		"n-readlines": "^0.2.7",
 		"split": "^1.0.0",
-		"sftp-promises": "^1.8.0"
+		"ssh2-promise": "^1.0.2"
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

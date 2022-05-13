@@ -1,7 +1,7 @@
 "use strict";
 
 var vscode = require("vscode");
-const sshClient = require("sftp-promises");
+const sshClient = require("ssh2-promise");
 
 var CTagSSHVF = /** @class */ (function ()
 {
@@ -18,11 +18,11 @@ var CTagSSHVF = /** @class */ (function ()
 			this.config = config;
 			console.log(`SSH2 connecting to remote server ${this.config.username}@${this.config.host}:${this.config.port}...`);
 
-			this.sftp = new sshClient();
-			this.sftp.session(this.config)
-				.then(ftpSession => {
+			this.ssh = new sshClient(this.config);
+			this.sftp = this.ssh.sftp();
+			this.ssh.connect()
+				.then(() => {
 					this.isConnected = true;
-					this.session = ftpSession;
 					console.log(`SSH2 connected to remote server ${this.config.username}@${this.config.host}:${this.config.port}`);
 				}).catch(() => {
 					console.error('SSH2 catch error');
@@ -42,14 +42,14 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 
 			try {
-				await this.sftp.getBuffer(uri.path, this.session)
+				await this.sftp.readFile(uri.path)
 					.then(data => {
 						this.loadedFile.set(uri.path, {date: Date.now(), text: String(data)});
 						return;
 
 					}).then(undefined, err => {
 						this.isConnected = false;
-						this.session.end();
+						this.ssh.close();
 						console.error(`sftp.getBuffer returns error:'${err.message}' on load file '${uri}'.`);
 						this.connectToSHH(this.config);
 						throw vscode.FileSystemError.Unavailable(`sftp.getBuffer returns error:'${err.message}' on load file '${uri}'.`);
@@ -57,7 +57,7 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 			catch (err) {
 				this.isConnected = false;
-				this.session.end();
+				this.ssh.close();
 				console.error(`${uri}. Load file returns error: ${err.message}`);
 				this.connectToSHH(this.config);
 				throw vscode.FileSystemError.FileNotFound(`${uri}. Load file returns error: ${err.message}`);
