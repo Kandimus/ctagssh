@@ -7,6 +7,7 @@ var arrayTags = [];
 var pathCTagFile = './';
 const CTagSSHVF = new sshvf.CTagSSHVF();
 var Init = false;
+var CTagSHHConfig = {};
 
 function collapsePath(path, maxlen, align) {
 	if (path.length <= maxlen) {
@@ -34,7 +35,10 @@ function activate(context)
 {
 	console.log('Congratulations, your extension "ctagssh" is now active!');
 
+	CTagSHHConfig = vscode.workspace.getConfiguration('ctagssh');
+
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('ctagsshvf', CTagSSHVF));
+	CTagSSHVF.connectToSHH({host: CTagSHHConfig.host, port: CTagSHHConfig.port, username: CTagSHHConfig.username, password: CTagSHHConfig.password});
 
 	if (vscode.workspace.workspaceFolders !== undefined) {
 		Init = true;
