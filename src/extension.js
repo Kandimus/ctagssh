@@ -8,6 +8,25 @@ var pathCTagFile = './';
 const CTagSSHVF = new sshvf.CTagSSHVF();
 var Init = false;
 
+function collapsePath(path, maxlen, align) {
+	if (path.length <= maxlen) {
+		return path;
+	}
+
+	switch(align) {
+		case 'left':
+			return '…' + path.substring(path.length - maxlen + 1, path.length);
+		
+		case 'right':
+			return path.substring(0, maxlen - 1) + '…';
+
+
+		case 'center':
+		default:
+			return path.substring(0, (maxlen - 1) / 2) + '…' + path.substring(path.length - (maxlen + 1) / 2 + 1, path.length);
+	}
+}
+
 /**
  * @param {vscode.ExtensionContext} context
  */
@@ -110,8 +129,11 @@ function loadCTags(tagFilePath) {
 			patternEscaped = pattern.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 		}
 
+		const delim = '  ->  ';
+		let maxlen = 80 - (tagName.length + delim.length);
 		tags.push({
-			label: tagName,
+			label: tagName + delim + collapsePath(fileName, maxlen, 'left'),
+			tagName: tagName,
 			filePath: fileName,
 			pattern: patternEscaped,
 			// remainingString: remainingString,
@@ -129,24 +151,22 @@ function searchTags(context/*: vscode.ExtensionContext*/)
 	let query = getSelectedText(vscode.window.activeTextEditor);
 
 	let displayFiles = arrayTags.filter((tag, index) => {
-		return tag.label === query;
+		return tag.tagName === query;
 	});
 
 	//Case 1. Only one tag found  
 	if (displayFiles.length === 1) {
-		//recordHistory(displayFiles[0]);
-		//saveWorkspaceState(context, STATE_KEY, {navigationHistory: navigationHistory});
 		navigateToDefinition(displayFiles[0]);
 
 	//Case 2. Many tags found
 	} else if (displayFiles.length > 0) {
-		console.log(displayFiles);
-		vscode.window.showQuickPick(displayFiles, {matchOnDescription: true, matchOnDetail: true}).then(val => {
-				//recordHistory(val);
-				//saveWorkspaceState(context, STATE_KEY, {navigationHistory: navigationHistory});
+		vscode.window.showQuickPick(displayFiles, {matchOnDescription: true, matchOnDetail: true})
+			.then(val => {
 				navigateToDefinition(val);
-			}
-		);
+			})
+			.then(undefined, err => {
+				;
+			});
 	
 	//Case 3. No tags found
 	} else {
@@ -156,36 +176,42 @@ function searchTags(context/*: vscode.ExtensionContext*/)
 
 async function navigateToDefinition(tag)
 {
-	let lineNumber = -1;
+	if (typeof(tag) == 'undefined') {
+		return;
+	}
 
-	console.log('navigateToDefinition: filePath = "' + tag.filePath + '" pattern = "' + tag.pattern + '"');
-
+	//console.log('navigateToDefinition: filePath = "' + tag.filePath + '" pattern = "' + tag.pattern + '"');
 	const uri = vscode.Uri.parse('ctagsshvf:' + tag.filePath);
 	console.log('Virtual file: ' + uri.path);
 		
-	await CTagSSHVF.preload_file(uri).then(async () => {
-		let doc = await vscode.workspace.openTextDocument(uri);
-		let textEdit = await vscode.window.showTextDocument(doc, { preview: false });
+	await CTagSSHVF.preload_file(uri)
+		.then(async () => {
+			let lineNumber = -1;
+			let doc = await vscode.workspace.openTextDocument(uri);
+			let textEdit = await vscode.window.showTextDocument(doc, { preview: false });
 
-		if (tag.type == 'N') {
-			console.log('navigateToDefinition: tag is number of line = "' + parseInt(tag.pattern));
-			lineNumber = parseInt(tag.pattern);
-			lineNumber = lineNumber === 0 ? lineNumber : lineNumber - 1;
+			if (tag.type == 'N') {
+				//console.log('navigateToDefinition: tag is number of line = ' + parseInt(tag.pattern));
+				lineNumber = parseInt(tag.pattern);
+				lineNumber = lineNumber === 0 ? lineNumber : lineNumber - 1;
 			
-		} else {
-			const text = textEdit.document.getText();
-			lineNumber = findLineNumByPattern(text, tag.pattern);
-			console.log('navigateToDefinition: line of tag = ' + lineNumber);
-		}
+			} else {
+				const text = textEdit.document.getText();
+				lineNumber = findLineNumByPattern(text, tag.pattern);
+				//console.log('navigateToDefinition: line of tag = ' + lineNumber);
+			}
 
-		if (lineNumber >= 0) {
-			let newSelection = new vscode.Selection(lineNumber, 0, lineNumber, 0);
-			vscode.window.activeTextEditor.selection = newSelection;
-			vscode.window.activeTextEditor.revealRange(newSelection, vscode.TextEditorRevealType.InCenter);
-		} else {
-			vscode.window.showErrorMessage('Tag "' + tag.label + '" is not found in the "' + fullPath + '"');
-		}
-	});
+			if (lineNumber >= 0) {
+				let newSelection = new vscode.Selection(lineNumber, 0, lineNumber, 0);
+				vscode.window.activeTextEditor.selection = newSelection;
+				vscode.window.activeTextEditor.revealRange(newSelection, vscode.TextEditorRevealType.InCenter);
+			} else {
+				vscode.window.showErrorMessage('Tag "' + tag.tagName + '" is not found in the "' + fullPath + '"');
+			}
+		})
+		.then(undefined, err =>{
+			;
+		});
 }
 
 function getSelectedText(editor) {
