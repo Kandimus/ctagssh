@@ -7,7 +7,7 @@ var CTagSHH_Tags = undefined;
 var CTagSSH_VF;
 var CTagSHH_Init = false;
 var CTagSHH_StatusBar;
-const CTagSSHColor = Object.freeze({"NotConnect": "#DD0000", "Connecting": "#FFFF00", "Connected": "#00DD00", "Download" : "#0000EE"});
+const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
 
 function collapsePath(path, maxlen, align)
 {
@@ -28,27 +28,55 @@ function collapsePath(path, maxlen, align)
 	}
 }
 
+function updateStatusBar(mode)
+{
+	switch (mode) {
+		case CTagSSHMode.NotConnected:
+			CTagSHH_StatusBar.text = '| $(debug-disconnect) CTagSSH |';
+			CTagSHH_StatusBar.color = "#DD0000";
+			CTagSHH_StatusBar.tooltip = "Not Connected";
+			break;
+
+		case CTagSSHMode.Connecting:
+			CTagSHH_StatusBar.text = '| $(outline-view-icon) CTagSSH |';
+			CTagSHH_StatusBar.color = "#FFFF00";
+			CTagSHH_StatusBar.tooltip = "Connecting";
+			break;
+
+		case CTagSSHMode.Connected:
+			CTagSHH_StatusBar.text = '| $(outline-view-icon) CTagSSH |';
+			CTagSHH_StatusBar.color = "#00DD00";
+			CTagSHH_StatusBar.tooltip = "Connected";
+			break;
+
+		case CTagSSHMode.Download:
+			CTagSHH_StatusBar.text = '| $(extensions-install-count) CTagSSH |';
+			CTagSHH_StatusBar.color = "#0000EE";
+			CTagSHH_StatusBar.tooltip = "Downloading";
+			break;
+	}
+
+	CTagSHH_StatusBar.show();
+}
+
 /**
  * @param {vscode.ExtensionContext} context
  */
 function activate(context)
 {
-	console.log('Congratulations, your extension "ctagssh" is now active!');
+	console.log('The extension "ctagssh" is now active!');
 
 	// Add status bar
 	CTagSHH_StatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
 	//CTagSHHStatusBar.command = myCommandId;
-	CTagSHH_StatusBar.text = `| $(outline-view-icon) CTagSSH |`;
-	CTagSHH_StatusBar.backgroundColor = '#FF0000';//'statusBar.errorBackground';//'statusBarItem.errorBackground';
-	CTagSHH_StatusBar.color = CTagSSHColor.NotConnect;
-	CTagSHH_StatusBar.tooltip = "Not Connect";
 	context.subscriptions.push(CTagSHH_StatusBar);
-	CTagSHH_StatusBar.show();
+	updateStatusBar(CTagSSHMode.NotConnected);
 
 	// Registering new TextDocumentContentProvider
 	CTagSSH_VF = new sshvf.CTagSSHVF();
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('ctagsshvf', CTagSSH_VF));
 	
+	// Check on active workspace
 	if (vscode.workspace.workspaceFolders === undefined) {
 		console.error('Variable "vscode.workspace.workspaceFolders" is not defined.');
 		return;
@@ -105,10 +133,7 @@ module.exports = {
 async function connectToSSH()
 {
 	CTagSSH_VF.disconnect();
-	
-	CTagSHH_StatusBar.tooltip = "Connecting...";
-	CTagSHH_StatusBar.color = CTagSSHColor.Connecting;
-	CTagSHH_StatusBar.show();
+	updateStatusBar(CTagSSHMode.Connecting);
 
 	let conf = vscode.workspace.getConfiguration('ctagssh');
 
@@ -121,12 +146,11 @@ async function connectToSSH()
 
 	CTagSSH_VF.connect(conf)
 		.then(() => {
-			CTagSHH_StatusBar.tooltip = CTagSSH_VF.isConnected ? "Connected" : "Not connect";
-			CTagSHH_StatusBar.color = CTagSSH_VF.isConnected ? CTagSSHColor.Connected : CTagSSHColor.NotConnect;
-			CTagSHH_StatusBar.show();
+			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 			return Promise.resolve(1);
 		})
 		.then(undefined, err => {
+			updateStatusBar(CTagSSHMode.NotConnected);
 			return Promise.reject(err);
 		});
 }
@@ -168,7 +192,6 @@ async function loadCTags(tagFilePath)
 		let patternRight    = remainingString.substring(remainingString.lastIndexOf(";\"") + 2);
 		var patternType     = patternRight.substring(patternRight.indexOf("\t") + 1, patternRight.indexOf("\t") + 2);
 
-		//TODO check pattern as ^_32$. it found in 3UK
 		if (!isNaN(patternLeft)) {
 			var patternEscaped = patternLeft;
 			patternType = 'N';
@@ -238,18 +261,14 @@ async function navigateToDefinition(tag)
 	const uri = vscode.Uri.parse('ctagsshvf:' + tag.filePath);
 	console.log('Virtual file: ' + uri.path);
 	
-	CTagSHH_StatusBar.tooltip = "Download ...";
-	CTagSHH_StatusBar.color = CTagSSHColor.Download;
-	CTagSHH_StatusBar.show();
+	updateStatusBar(CTagSSHMode.Download);
 	await CTagSSH_VF.preload_file(uri)
 		.then(async () => {
 			let lineNumber = -1;
 			let doc = await vscode.workspace.openTextDocument(uri);
 			let textEdit = await vscode.window.showTextDocument(doc, { preview: false });
 
-			CTagSHH_StatusBar.tooltip = CTagSSH_VF.isConnected ? "Connected" : "Not connect";
-			CTagSHH_StatusBar.color = CTagSSH_VF.isConnected ? CTagSSHColor.Connected : CTagSSHColor.NotConnect;
-			CTagSHH_StatusBar.show();
+			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 
 			if (tag.type == 'N') {
 				//console.log('navigateToDefinition: tag is number of line = ' + parseInt(tag.pattern));
@@ -271,8 +290,7 @@ async function navigateToDefinition(tag)
 			}
 		})
 		.then(undefined, err =>{
-			CTagSHH_StatusBar.tooltip = CTagSSH_VF.isConnected ? "Connected" : "Not connect";
-			CTagSHH_StatusBar.show();
+			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 		});
 }
 
