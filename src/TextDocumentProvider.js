@@ -13,19 +13,32 @@ var CTagSSHVF = /** @class */ (function ()
 			this.loadedFile = new Map();
 		}
 
-		async connectToSHH(config)
+		disconnect()
+		{
+			this.isConnected = false;
+			
+			if (this.ssh) {
+				this.ssh.close();
+				delete this.ssh;
+			}
+		}
+
+		async connect(config)
 		{
 			this.config = config;
 			console.log(`SSH2 connecting to remote server ${this.config.username}@${this.config.host}:${this.config.port}...`);
 
 			this.ssh = new sshClient(this.config);
 			this.sftp = this.ssh.sftp();
-			this.ssh.connect()
+
+			await this.ssh.connect()
 				.then(() => {
 					this.isConnected = true;
 					console.log(`SSH2 connected to remote server ${this.config.username}@${this.config.host}:${this.config.port}`);
+					return Promise.resolve(2);
 				}).catch(() => {
 					console.error('SSH2 catch error');
+					return Promise.reject(0);
 				});
 		}
 
@@ -48,18 +61,18 @@ var CTagSSHVF = /** @class */ (function ()
 						return;
 
 					}).then(undefined, err => {
-						this.isConnected = false;
-						this.ssh.close();
+						this.disconnect();
 						console.error(`sftp.getBuffer returns error:'${err.message}' on load file '${uri}'.`);
-						this.connectToSHH(this.config);
+
+						this.connect(this.config);
 						throw vscode.FileSystemError.Unavailable(`sftp.getBuffer returns error:'${err.message}' on load file '${uri}'.`);
 					});
 			}
 			catch (err) {
-				this.isConnected = false;
-				this.ssh.close();
+				this.disconnect();
 				console.error(`${uri}. Load file returns error: ${err.message}`);
-				this.connectToSHH(this.config);
+
+				this.connect(this.config);
 				throw vscode.FileSystemError.FileNotFound(`${uri}. Load file returns error: ${err.message}`);
 			}
 		}

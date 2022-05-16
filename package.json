@@ -1,7 +1,7 @@
 {
 	"name": "ctagssh",
 	"description": "CTags support on SSH",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"publisher": "Kandimus",
 	"repository": "https://github.com/Kandimus/ctagsssh.git",
 	"engines": {
@@ -10,7 +10,9 @@
 	"activationEvents": [
 		"onCommand:ctagssh.gotoTag",
 		"onCommand:ctagssh.print",
-		"onCommand:ctagssh.test"
+		"onCommand:ctagssh.test",
+		"onCommand:ctagssh.reconnect",
+		"onStartupFinished"
 	],
 	"main": "./src/extension.js",
 	"contributes": {
@@ -20,8 +22,8 @@
 				"title": "ctagssh.test"
 			},
 			{
-				"command": "ctagssh.init",
-				"title": "ctagssh.init"
+				"command": "ctagssh.reconnect",
+				"title": "ctagssh.reconnect"
 			},
 			{
 				"command": "ctagssh.gotoTag",
@@ -68,6 +70,11 @@
 					"type": "string",
 					"default": null,
 					"description": "folder contains .ctag files (not impliment)"
+				},
+				"ctagssh.fileCtags": {
+					"type": "string",
+					"default": ".ctags",
+					"description": "A file containing information about CTags. This is usually a '.ctags' or '.tags' file."
 				}
 			}
 		}
