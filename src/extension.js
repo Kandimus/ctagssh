@@ -266,7 +266,7 @@ async function navigateToDefinition(tag)
 		.then(async () => {
 			let lineNumber = -1;
 			let doc = await vscode.workspace.openTextDocument(uri);
-			let textEdit = await vscode.window.showTextDocument(doc, { preview: false });
+			let textEdit = await vscode.window.showTextDocument(doc, { preview: true });
 
 			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 
@@ -290,6 +290,7 @@ async function navigateToDefinition(tag)
 			}
 		})
 		.then(undefined, err =>{
+			vscode.window.showErrorMessage(err.message);
 			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 		});
 }
