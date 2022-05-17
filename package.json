@@ -3,15 +3,12 @@
 	"description": "CTags support on SSH",
 	"version": "0.1.0",
 	"publisher": "Kandimus",
+	"icon": "images/icon.png",
 	"repository": "https://github.com/Kandimus/ctagsssh.git",
 	"engines": {
 		"vscode": "^1.64.1"
 	},
 	"activationEvents": [
-		"onCommand:ctagssh.gotoTag",
-		"onCommand:ctagssh.print",
-		"onCommand:ctagssh.test",
-		"onCommand:ctagssh.reconnect",
 		"onStartupFinished"
 	],
 	"main": "./src/extension.js",
