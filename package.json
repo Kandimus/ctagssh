@@ -73,9 +73,9 @@
 					"default": ".ctags",
 					"description": "A file containing information about CTags. This is usually a '.ctags' or '.tags' file."
 				},
-				"ctagssh.ShowExtensions": {
+				"ctagssh.showExtensions": {
 					"type": "string",
-					"default": "ANY",
+					"default": "",
 					"description": "List of source code file extensions used as filter for dropdown menu of searched tag variants. Ex: h, c, cpp"
 				}
 			}

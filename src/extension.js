@@ -9,6 +9,7 @@ var CTagSSH_VF;
 var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
 const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
+var CTagSSH_showExtensions = undefined; // undefined == ANY
 
 
 const collapsePathMode = Object.freeze({"left": 1, "center": 2, "right": 3});
@@ -133,6 +134,7 @@ function activate(context)
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.test', async () => {
 		var a = 1;
 	}));
+
 }
 
 function deactivate()
@@ -270,6 +272,28 @@ function searchTags()
 
 	//Case 2. Many tags found
 	} else if (displayFiles.length > 0) {
+
+		// extract available extensions from extension settings if any
+		let conf = vscode.workspace.getConfiguration('ctagssh');
+
+		if ("" !== conf.showExtensions) {
+		
+			CTagSSH_showExtensions = conf.showExtensions.split(/[,;\s]+/);
+		}
+
+		let filteredFiles = undefined;
+
+		if (undefined !== CTagSSH_showExtensions) {
+
+			const path = require('path');
+			// TODO: filtering!!
+			for (i = 0; i < CTagSSH_showExtensions.length; ++i) {
+
+			}
+			
+			displayFiles[0].filePath
+		}
+
 		vscode.window.showQuickPick(displayFiles, {matchOnDescription: true, matchOnDetail: true})
 			.then(val => {
 				navigateToDefinition(val);
