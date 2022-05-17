@@ -10,6 +10,7 @@ var CTagSSHVF = /** @class */ (function ()
 			this.onDidChangeEmitter = new vscode.EventEmitter();
 			this.onDidChange = this.onDidChangeEmitter.event;
 
+			this.separator = '$';
 			this.loadedFile = new Map();
 		}
 
@@ -20,6 +21,7 @@ var CTagSSHVF = /** @class */ (function ()
 			if (this.ssh) {
 				this.ssh.close();
 				delete this.ssh;
+				this.ssh = undefined;
 			}
 		}
 
@@ -31,24 +33,21 @@ var CTagSSHVF = /** @class */ (function ()
 			this.ssh = new sshClient(this.config);
 			this.sftp = this.ssh.sftp();
 
-			await this.ssh.connect()
-				.then(() => {
-					this.sftp.realpath('./')
-						.then(path => {
-							this.getStatIsWork = true;
-							this.isConnected = true;
-							this.homepath = path;
-							this.statTempFile = this.homepath + '/.ctagssh.temp';
-
-							console.log(`SSH2 connected to remote server ${this.config.username}@${this.config.host}:${this.config.port}${this.homepath}`);
-						}).then(undefined, err =>{
-							console.error(`Can not connect to romote server`);
-						});
-					return Promise.resolve(2);
-				}).catch(() => {
-					console.error('SSH2 catch error');
-					return Promise.reject(0);
-				});
+			try {
+				await this.ssh.connect();
+				this.homepath = await this.sftp.realpath('./');
+				this.getStatIsWork = true;
+				this.isConnected = true;
+				this.statTempFile = this.homepath + '/.ctagssh.temp';
+				console.log(`SSH2 connected to remote server ${this.config.username}@${this.config.host}:${this.config.port}${this.homepath}`);
+				return Promise.resolve();
+			}
+			catch(err)
+			{
+				this.isConnected = false;
+				console.error(`Can not connect to romote server`);
+				return Promise.reject();
+			}
 		}
 
 		async preload_file(uri)
@@ -58,28 +57,27 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 
 			let mtime = 0;
+			let filepath = uri.path.split(this.separator)[1];
 
 			if (this.getStatIsWork) {
 				try {
-					attr = await this.sftp.getStat(uri.path);
+					attr = await this.sftp.getStat(filepath);
 					mtime = attr.mtime;
-					//console.log(`sftp.getStat(${uri.path}).mtime = ${mtime}`);
+					//console.log(`sftp.getStat(${filepath}).mtime = ${mtime}`);
 				} catch(err){
-					//console.error(`sftp.getStat(${uri.path}) is fault`);
+					//console.error(`sftp.getStat(${filepath}) is fault`);
 					this.getStatIsWork = false;
 				}
 			}
 
 			if (!this.getStatIsWork) {
 				try {
-					await this.ssh.exec(`stat ${uri.path} | grep "Modify" > ${this.statTempFile}`);
+					await this.ssh.exec(`stat ${filepath} | grep "Modify" > ${this.statTempFile}`);
 					await this.sftp.readFile(`${this.statTempFile}`)
 						.then(data => {
 							let str_date = String(data)
 							let date = new Date(str_date.substring(8, str_date.length - 1))
 							mtime = date.valueOf();
-							//console.log('Stat is "' + str_date.substring(8, str_date.length - 1) + '"');
-							//console.log('Date is "' + date.valueOf() + '"');
 						});
 				} catch(err) {
 					console.error(`Get the file stat is fault.`);
@@ -87,45 +85,36 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 
 			// Find file in cache and check this mtime
-			if (this.loadedFile.has(uri.path)) {
-				if (this.loadedFile.get(uri.path).mtime >= mtime) {
-					this.loadedFile.get(uri.path).date = Date.now();
-					//console.log("The file is found in cache");
-					return;
+			if (this.loadedFile.has(filepath)) {
+				if (this.loadedFile.get(filepath).mtime >= mtime) {
+					this.loadedFile.get(filepath).date = Date.now();
+					return Promise.resolve('');
 				} else {
-					//console.log("The file is found in cache but mtime is expired");
-					this.loadedFile.delete(uri.path);
+					console.log("The file is found in cache but mtime is expired");
+					this.loadedFile.delete(filepath);
 				}
 			}
 
-			try {
-				await this.sftp.readFile(uri.path)
-					.then(data => {
-						let tmpstr = String(data);
-						this.loadedFile.set(uri.path, {mtime: mtime, date: Date.now(), text: String(data)});
-						return;
+			await this.sftp.readFile(filepath)
+				.then(data => {
+					this.loadedFile.set(filepath, {mtime: mtime, date: Date.now(), text: String(data)});
+					return Promise.resolve('');
 
-					}).then(undefined, err => {
-						//this.disconnect();
-						console.error(`sftp.readFile returns error:'${err.message}' on load file '${uri}'.`);
+				}).then(undefined, err => {
+					if (err.message == 'No such file') {
+						return Promise.reject(`The file '${filepath}' not found on remote host.`);
+					}
 
-						//this.connect(this.config);
-						throw vscode.FileSystemError.Unavailable(`sftp.readFile returns error:'${err.message}' on load file '${uri}'.`);
-					});
-			}
-			catch (err) {
-				//this.disconnect();
-				console.error(`${uri}. Load file returns error: ${err.message}`);
-
-				//this.connect(this.config);
-				throw vscode.FileSystemError.FileNotFound(`${uri}. Load file returns error: ${err.message}`);
-			}
+					this.disconnect();
+					console.error(`sftp.readFile returns error:'${err.message}' on load file '${filepath}'. Reconnect`);
+					this.connect(this.config);
+					return Promise.reject(`sftp.readFile returns error:'${err.message}' on load file '${filepath}'. Reconnect`);
+				});
 		}
 
 		provideTextDocumentContent(uri) {
-			//let tmpstr = this.loadedFile.get(uri.path).text;
-			//tmpstr = tmpstr;
-			return this.loadedFile.get(uri.path).text;
+			let filepath = uri.path.split(this.separator)[1];
+			return this.loadedFile.get(filepath).text;
 		}
 	}
 	return CTagSSHVF_t;
