@@ -73,7 +73,7 @@ function activate(context)
 
 	// Add status bar
 	CTagSSH_StatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-	//CTagSHHStatusBar.command = myCommandId;
+	CTagSSH_StatusBar.command = 'ctagssh.reconnect';
 	context.subscriptions.push(CTagSSH_StatusBar);
 	updateStatusBar(CTagSSHMode.NotConnected);
 
@@ -96,7 +96,9 @@ function activate(context)
 		searchTags(context);
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.reconnect', async () => {
-		connectToSSH();
+		if (!CTagSSH_VF.isConnected) {
+			connectToSSH();
+		}
 	}));
 
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.print', () => {
