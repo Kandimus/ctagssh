@@ -1,7 +1,7 @@
 {
 	"name": "ctagssh",
 	"description": "CTags support on SSH",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"publisher": "Kandimus",
 	"repository": "https://github.com/Kandimus/ctagsssh.git",
 	"engines": {
@@ -78,12 +78,7 @@
 		"ssh2-promise": "^1.0.2"
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
-		"lint": "eslint . --ext .ts,.tsx",
-		"watch": "tsc -watch -p ./",
-		"pretest": "npm run compile",
-		"test": "node ./out/test/runTest.js"
+		"postinstall": "node ./node_modules/vscode/bin/install"
 	},
 	"devDependencies": {
 		"@types/node": "^12.12.0",
