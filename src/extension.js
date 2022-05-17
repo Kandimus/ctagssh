@@ -4,10 +4,10 @@ var LineByLine = require('n-readlines');
 var sshvf = require('./TextDocumentProvider.js');
 //var Math = require('math');
 
-var CTagSHH_Tags = undefined;
+var CTagSSH_Tags = undefined;
 var CTagSSH_VF;
-var CTagSHH_Init = false;
-var CTagSHH_StatusBar;
+var CTagSSH_Init = false;
+var CTagSSH_StatusBar;
 const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
 
 function collapsePath(path, maxlen, align)
@@ -33,31 +33,31 @@ function updateStatusBar(mode)
 {
 	switch (mode) {
 		case CTagSSHMode.NotConnected:
-			CTagSHH_StatusBar.text = '| $(debug-disconnect) CTagSSH |';
-			CTagSHH_StatusBar.color = "#DD0000";
-			CTagSHH_StatusBar.tooltip = "Not Connected";
+			CTagSSH_StatusBar.text = '| $(debug-disconnect) CTagSSH |';
+			CTagSSH_StatusBar.color = "#DD0000";
+			CTagSSH_StatusBar.tooltip = "Not Connected";
 			break;
 
 		case CTagSSHMode.Connecting:
-			CTagSHH_StatusBar.text = '| $(outline-view-icon) CTagSSH |';
-			CTagSHH_StatusBar.color = "#FFFF00";
-			CTagSHH_StatusBar.tooltip = "Connecting";
+			CTagSSH_StatusBar.text = '| $(outline-view-icon) CTagSSH |';
+			CTagSSH_StatusBar.color = "#FFFF00";
+			CTagSSH_StatusBar.tooltip = "Connecting";
 			break;
 
 		case CTagSSHMode.Connected:
-			CTagSHH_StatusBar.text = '| $(outline-view-icon) CTagSSH |';
-			CTagSHH_StatusBar.color = "#00DD00";
-			CTagSHH_StatusBar.tooltip = "Connected";
+			CTagSSH_StatusBar.text = '| $(outline-view-icon) CTagSSH |';
+			CTagSSH_StatusBar.color = "#00DD00";
+			CTagSSH_StatusBar.tooltip = "Connected";
 			break;
 
 		case CTagSSHMode.Download:
-			CTagSHH_StatusBar.text = '| $(extensions-install-count) CTagSSH |';
-			CTagSHH_StatusBar.color = "#0000EE";
-			CTagSHH_StatusBar.tooltip = "Downloading";
+			CTagSSH_StatusBar.text = '| $(extensions-install-count) CTagSSH |';
+			CTagSSH_StatusBar.color = "#0000EE";
+			CTagSSH_StatusBar.tooltip = "Downloading";
 			break;
 	}
 
-	CTagSHH_StatusBar.show();
+	CTagSSH_StatusBar.show();
 }
 
 function getRandomInt(max) {
@@ -72,9 +72,9 @@ function activate(context)
 	console.log('The extension "ctagssh" is now active!');
 
 	// Add status bar
-	CTagSHH_StatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+	CTagSSH_StatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
 	//CTagSHHStatusBar.command = myCommandId;
-	context.subscriptions.push(CTagSHH_StatusBar);
+	context.subscriptions.push(CTagSSH_StatusBar);
 	updateStatusBar(CTagSSHMode.NotConnected);
 
 	// Registering new TextDocumentContentProvider
@@ -86,7 +86,7 @@ function activate(context)
 		console.error('Variable "vscode.workspace.workspaceFolders" is not defined.');
 		return;
 	}
-	CTagSHH_Init = true;
+	CTagSSH_Init = true;
 
 	// Connect to remote host
 	connectToSSH();
@@ -101,12 +101,12 @@ function activate(context)
 
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.print', () => {
 		const maxElementToPrint = 10;
-		if (CTagSHH_Tags.length > maxElementToPrint) {
+		if (CTagSSH_Tags.length > maxElementToPrint) {
 			for (ii = 0; ii < maxElementToPrint; ++ii) {
-				console.log(CTagSHH_Tags[ii]);
+				console.log(CTagSSH_Tags[ii]);
 			}
 		} else {
-			console.log(CTagSHH_Tags);
+			console.log(CTagSSH_Tags);
 		}
 	}));
 
@@ -117,13 +117,13 @@ function activate(context)
 
 function deactivate()
 {
-	if (CTagSHH_StatusBar) {
-		CTagSHH_StatusBar.dispose();
+	if (CTagSSH_StatusBar) {
+		CTagSSH_StatusBar.dispose();
 	}
 
-	if (CTagSHH_Tags) {
-		delete CTagSHH_Tags;
-		CTagSHH_Tags = undefined;
+	if (CTagSSH_Tags) {
+		delete CTagSSH_Tags;
+		CTagSSH_Tags = undefined;
 	}
 }
 
@@ -142,7 +142,7 @@ async function connectToSSH()
 
 	let conf = vscode.workspace.getConfiguration('ctagssh');
 
-	if (CTagSHH_Tags === undefined) {
+	if (CTagSSH_Tags === undefined) {
 		let filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags)
 
 		console.log(`Reading tags from: '${filename}'`);
@@ -172,7 +172,7 @@ async function loadCTags(tagFilePath)
 		return Promise.reject();
 	}
 
-	CTagSHH_Tags = [];
+	CTagSSH_Tags = [];
 	while (line = liner.next()) {
 		let elements = line.toString('ascii').split("\t");
 		let tagName, fileName;
@@ -214,7 +214,7 @@ async function loadCTags(tagFilePath)
 
 		const delim = '  ->  ';
 		let maxlen = 80 - (tagName.length + delim.length);
-		CTagSHH_Tags.push({
+		CTagSSH_Tags.push({
 			label: tagName + delim + collapsePath(fileName, maxlen, 'left'),
 			tagName: tagName,
 			filePath: fileName,
@@ -232,7 +232,7 @@ function searchTags(context/*: vscode.ExtensionContext*/)
 {
 	let query = getSelectedText(vscode.window.activeTextEditor);
 
-	let displayFiles = CTagSHH_Tags.filter((tag, index) => {
+	let displayFiles = CTagSSH_Tags.filter((tag, index) => {
 		return tag.tagName === query;
 	});
 
