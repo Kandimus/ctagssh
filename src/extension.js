@@ -2,6 +2,7 @@ const vscode = require('vscode');
 var path = require('path');
 var LineByLine = require('n-readlines');
 var sshvf = require('./TextDocumentProvider.js');
+//var Math = require('math');
 
 var CTagSHH_Tags = undefined;
 var CTagSSH_VF;
@@ -58,6 +59,10 @@ function updateStatusBar(mode)
 
 	CTagSHH_StatusBar.show();
 }
+
+function getRandomInt(max) {
+	return Math.floor(Math.random() * max);
+ }
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -147,7 +152,7 @@ async function connectToSSH()
 	CTagSSH_VF.connect(conf)
 		.then(() => {
 			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
-			return Promise.resolve(1);
+			return Promise.resolve();
 		})
 		.then(undefined, err => {
 			updateStatusBar(CTagSSHMode.NotConnected);
@@ -258,7 +263,7 @@ async function navigateToDefinition(tag)
 	}
 
 	//console.log('navigateToDefinition: filePath = "' + tag.filePath + '" pattern = "' + tag.pattern + '"');
-	const uri = vscode.Uri.parse('ctagsshvf:' + tag.filePath);
+	const uri = vscode.Uri.parse('ctagsshvf:' + getRandomInt(255).toString(16) + CTagSSH_VF.separator + tag.filePath);
 	console.log('Virtual file: ' + uri.path);
 	
 	updateStatusBar(CTagSSHMode.Download);
@@ -266,7 +271,7 @@ async function navigateToDefinition(tag)
 		.then(async () => {
 			let lineNumber = -1;
 			let doc = await vscode.workspace.openTextDocument(uri);
-			let textEdit = await vscode.window.showTextDocument(doc, { preview: false });
+			let textEdit = await vscode.window.showTextDocument(doc, { preview: true });
 
 			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 
@@ -290,6 +295,7 @@ async function navigateToDefinition(tag)
 			}
 		})
 		.then(undefined, err =>{
+			vscode.window.showErrorMessage(err);
 			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 		});
 }
