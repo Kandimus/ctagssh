@@ -12,7 +12,7 @@ ctags -R -f .ctags
 ```
 
 ### 2) Connect to remote host
-Open settings and fill fields `host`, `port`, `username` and `password` to connect to romote host.
+Open settings and fill fields `host`, `port`, `username` and `password` to connect to remote host.
 
 ## Keybinding
 Select the words in the vscode and the press `shift + f12`.
