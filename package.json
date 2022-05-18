@@ -1,10 +1,10 @@
 {
 	"name": "ctagssh",
-	"description": "CTags support on SSH",
+	"description": "CTags support via SSH",
 	"version": "1.0.0",
 	"publisher": "Kandimus",
 	"icon": "images/icon.png",
-	"repository": "https://github.com/Kandimus/ctagsssh.git",
+	"repository": "https://github.com/Kandimus/ctagsssh",
 	"engines": {
 		"vscode": "^1.64.1"
 	},

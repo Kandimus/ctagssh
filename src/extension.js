@@ -10,6 +10,14 @@ var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
 const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
 
+
+const collapsePathMode = Object.freeze({"left": 1, "center": 2, "right": 3});
+
+/**
+ * @param {string} path
+ * @param {number} maxlen
+ * @param {collapsePathMode} align
+ */
 function collapsePath(path, maxlen, align)
 {
 	if (path.length <= maxlen) {
@@ -17,18 +25,23 @@ function collapsePath(path, maxlen, align)
 	}
 
 	switch(align) {
-		case 'left':
+		case collapsePathMode.left:
 			return '…' + path.substring(path.length - maxlen + 1, path.length);
 		
-		case 'right':
+		case collapsePathMode.right:
 			return path.substring(0, maxlen - 1) + '…';
 
-		case 'center':
+		case collapsePathMode.center:
 		default:
 			return path.substring(0, (maxlen - 1) / 2) + '…' + path.substring(path.length - (maxlen + 1) / 2 + 1, path.length);
 	}
 }
 
+/**
+ * @brief Update StatusBar according to the mode. Set icon and text color.
+ * 
+ * @param {number} mode
+ */
 function updateStatusBar(mode)
 {
 	switch (mode) {
@@ -60,6 +73,11 @@ function updateStatusBar(mode)
 	CTagSSH_StatusBar.show();
 }
 
+/**
+ * @param {number} max
+ * 
+ * @return random number [0, max)
+ */
 function getRandomInt(max) {
 	return Math.floor(Math.random() * max);
  }
@@ -93,7 +111,7 @@ function activate(context)
 
 	// Registering commands
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.gotoTag', () => {
-		searchTags(context);
+		searchTags();
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.reconnect', async () => {
 		if (!CTagSSH_VF.isConnected) {
@@ -104,7 +122,7 @@ function activate(context)
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.print', () => {
 		const maxElementToPrint = 10;
 		if (CTagSSH_Tags.length > maxElementToPrint) {
-			for (ii = 0; ii < maxElementToPrint; ++ii) {
+			for (var ii = 0; ii < maxElementToPrint; ++ii) {
 				console.log(CTagSSH_Tags[ii]);
 			}
 		} else {
@@ -123,8 +141,7 @@ function deactivate()
 		CTagSSH_StatusBar.dispose();
 	}
 
-	if (CTagSSH_Tags) {
-		delete CTagSSH_Tags;
+	if (CTagSSH_Tags !== undefined) {
 		CTagSSH_Tags = undefined;
 	}
 }
@@ -135,8 +152,11 @@ module.exports = {
 	deactivate
 }
 
-//////////////////////////////////////////////////
-//
+/**
+ * @brief Connect to remote host, read .ctags file from disk and update StatusBar
+ * 
+ * @return Promise
+ */
 async function connectToSSH()
 {
 	CTagSSH_VF.disconnect();
@@ -148,7 +168,9 @@ async function connectToSSH()
 		let filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags)
 
 		console.log(`Reading tags from: '${filename}'`);
-		loadCTags(filename).then(console.log("Read tags"));
+		loadCTags(filename).then(() => {
+			console.log("Read tags");
+		});
 	}
 
 	CTagSSH_VF.connect(conf)
@@ -162,6 +184,9 @@ async function connectToSSH()
 		});
 }
 
+/**
+ * @param {import("fs").PathLike} tagFilePath
+ */
 async function loadCTags(tagFilePath)
 {
 	let line;
@@ -177,7 +202,8 @@ async function loadCTags(tagFilePath)
 	CTagSSH_Tags = [];
 	while (line = liner.next()) {
 		let elements = line.toString('ascii').split("\t");
-		let tagName, fileName;
+		let tagName = "";
+		let fileName = "";
 		let remainingElements = elements.filter((el, index) => {
 			if (index === 0) {
 				tagName = el;
@@ -199,7 +225,7 @@ async function loadCTags(tagFilePath)
 		let patternRight    = remainingString.substring(remainingString.lastIndexOf(";\"") + 2);
 		var patternType     = patternRight.substring(patternRight.indexOf("\t") + 1, patternRight.indexOf("\t") + 2);
 
-		if (!isNaN(patternLeft)) {
+		if (!isNaN(parseInt(patternLeft))) {
 			var patternEscaped = patternLeft;
 			patternType = 'N';
 		} else {
@@ -217,7 +243,7 @@ async function loadCTags(tagFilePath)
 		const delim = '  ->  ';
 		let maxlen = 80 - (tagName.length + delim.length);
 		CTagSSH_Tags.push({
-			label: tagName + delim + collapsePath(fileName, maxlen, 'left'),
+			label: tagName + delim + collapsePath(fileName, maxlen, collapsePathMode.left),
 			tagName: tagName,
 			filePath: fileName,
 			pattern: patternEscaped,
@@ -230,11 +256,11 @@ async function loadCTags(tagFilePath)
 	return Promise.resolve();
 }
 
-function searchTags(context/*: vscode.ExtensionContext*/)
+function searchTags()
 {
 	let query = getSelectedText(vscode.window.activeTextEditor);
 
-	let displayFiles = CTagSSH_Tags.filter((tag, index) => {
+	let displayFiles = CTagSSH_Tags.filter((/** @type {{ tagName: string; }} */ tag) => {
 		return tag.tagName === query;
 	});
 
@@ -254,7 +280,7 @@ function searchTags(context/*: vscode.ExtensionContext*/)
 	
 	//Case 3. No tags found
 	} else {
-		vscode.window.showErrorMessage('No related tags are found for the "' + query + '"');
+		vscode.window.showErrorMessage(`No related tags are found for the '${query}'`);
 	}
 }
 
@@ -293,7 +319,7 @@ async function navigateToDefinition(tag)
 				vscode.window.activeTextEditor.selection = newSelection;
 				vscode.window.activeTextEditor.revealRange(newSelection, vscode.TextEditorRevealType.InCenter);
 			} else {
-				vscode.window.showErrorMessage('Tag "' + tag.tagName + '" is not found in the "' + fullPath + '"');
+				vscode.window.showErrorMessage(`Tag "${tag.tagName}" is not found in the "${tag.filePath}"`);
 			}
 		})
 		.then(undefined, err =>{
@@ -302,6 +328,9 @@ async function navigateToDefinition(tag)
 		});
 }
 
+/**
+ * @param {vscode.TextEditor} editor
+ */
 function getSelectedText(editor)
 {
 	let selection = editor.selection;
@@ -313,14 +342,18 @@ function getSelectedText(editor)
 	return text;
 }
 
+/**
+ * @param {string} text
+ * @param {string | RegExp} reg
+ */
 function findLineNumByPattern(text, reg)
 {
 	var lineNumber = 0;
-	var found  = 0;
+	var found;
 	var regExp = new RegExp(reg);
 	var lines  = text.split("\n");
 
-	lines.every(element => {
+	lines.every((/** @type {string} */ element) => {
 		found = regExp.exec(element);
 		//console.log('findLineNumByPattern: result = ' + found + ', line = ' + lineNumber + ', element: ' + element);
 		if (found) {

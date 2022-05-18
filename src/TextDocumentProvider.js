@@ -3,6 +3,9 @@
 var vscode = require("vscode");
 const sshClient = require("ssh2-promise");
 
+/**
+ * @bref A class inherited from TextDocumentContentProvider. The main task is to read a file from a remote server.
+ */
 var CTagSSHVF = /** @class */ (function ()
 {
 	class CTagSSHVF_t {
@@ -25,6 +28,9 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 		}
 
+		/**
+		 * @param {any} config
+		 */
 		async connect(config)
 		{
 			this.config = config;
@@ -50,6 +56,9 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 		}
 
+		/**
+		 * @param {{ path: string; }} uri
+		 */
 		async preload_file(uri)
 		{
 			if (this.isConnected == false) {
@@ -61,7 +70,7 @@ var CTagSSHVF = /** @class */ (function ()
 
 			if (this.getStatIsWork) {
 				try {
-					attr = await this.sftp.getStat(filepath);
+					let attr = await this.sftp.getStat(filepath);
 					mtime = attr.mtime;
 					//console.log(`sftp.getStat(${filepath}).mtime = ${mtime}`);
 				} catch(err){
@@ -112,6 +121,9 @@ var CTagSSHVF = /** @class */ (function ()
 				});
 		}
 
+		/**
+		 * @param {{ path: string; }} uri
+		 */
 		provideTextDocumentContent(uri) {
 			let filepath = uri.path.split(this.separator)[1];
 			return this.loadedFile.get(filepath).text;
