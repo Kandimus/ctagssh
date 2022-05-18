@@ -278,27 +278,22 @@ function searchTags()
 
 		if ("" !== conf.showExtensions) {
 		
-			CTagSSH_showExtensions = conf.showExtensions.split(/[,;\s]+/).filter((/** @type {string} */ element) => {
-				return element !== "";
-			}).map((/** @type {string} */ element) => {
-				return element.toLowerCase();
-			});
+			CTagSSH_showExtensions = conf.showExtensions.split(/[,;\s]+/).filter((/** @type {string} */ element) => element !== "").map((/** @type {string} */ element) => element.toLowerCase());
 		}
-
 		// if there are available fltering extensions then filter files list
 		if (0 !== CTagSSH_showExtensions.length) {
 
 			const path = require('path');
-			// учесть нумерацию: '(NNNN) '
-			filteredFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => {
-				return CTagSSH_showExtensions.includes(path.extname(element.filePath).toLowerCase().substring(1));
-			});
+			filteredFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => CTagSSH_showExtensions.includes(path.extname(element.filePath).toLowerCase().substring(1)));
 		}
-
 		if (0 === filteredFiles.length) {
 			filteredFiles = displayFiles;
 		}
+		// enumeration of list of matching tags
+		for (let i = 0; i < filteredFiles.length; i++) {
 
+			filteredFiles[i].label = `(${(i + 1).toString().padStart(3, ' ')}) ${filteredFiles[i].label}`;
+		}
 		vscode.window.showQuickPick(filteredFiles, {matchOnDescription: true, matchOnDetail: true})
 			.then(val => {
 				navigateToDefinition(val);
