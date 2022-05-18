@@ -9,8 +9,6 @@ var CTagSSH_VF;
 var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
 const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
-var CTagSSH_showExtensions = undefined; // undefined == ANY
-
 
 const collapsePathMode = Object.freeze({"left": 1, "center": 2, "right": 3});
 
@@ -243,7 +241,7 @@ async function loadCTags(tagFilePath)
 		}
 
 		const delim = '  ->  ';
-		let maxlen = 80 - (tagName.length + delim.length);
+		let maxlen = 78 - (tagName.length + delim.length);
 		CTagSSH_Tags.push({
 			label: tagName + delim + collapsePath(fileName, maxlen, collapsePathMode.left),
 			tagName: tagName,
@@ -273,28 +271,35 @@ function searchTags()
 	//Case 2. Many tags found
 	} else if (displayFiles.length > 0) {
 
-		// extract available extensions from extension settings if any
+		// extract available extensions from ctagssh settings if any
 		let conf = vscode.workspace.getConfiguration('ctagssh');
+		let CTagSSH_showExtensions = [];
+		let filteredFiles = [];
 
 		if ("" !== conf.showExtensions) {
 		
-			CTagSSH_showExtensions = conf.showExtensions.split(/[,;\s]+/);
+			CTagSSH_showExtensions = conf.showExtensions.split(/[,;\s]+/).filter((/** @type {string} */ element) => {
+				return element !== "";
+			}).map((/** @type {string} */ element) => {
+				return element.toLowerCase();
+			});
 		}
 
-		let filteredFiles = undefined;
-
-		if (undefined !== CTagSSH_showExtensions) {
+		// if there are available fltering extensions then filter files list
+		if (0 !== CTagSSH_showExtensions.length) {
 
 			const path = require('path');
-			// TODO: filtering!!
-			for (i = 0; i < CTagSSH_showExtensions.length; ++i) {
-
-			}
-			
-			displayFiles[0].filePath
+			// учесть нумерацию: '(NNNN) '
+			filteredFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => {
+				return CTagSSH_showExtensions.includes(path.extname(element.filePath).toLowerCase().substring(1));
+			});
 		}
 
-		vscode.window.showQuickPick(displayFiles, {matchOnDescription: true, matchOnDetail: true})
+		if (0 === filteredFiles.length) {
+			filteredFiles = displayFiles;
+		}
+
+		vscode.window.showQuickPick(filteredFiles, {matchOnDescription: true, matchOnDetail: true})
 			.then(val => {
 				navigateToDefinition(val);
 			})
