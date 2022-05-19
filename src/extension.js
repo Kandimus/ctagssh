@@ -9,6 +9,8 @@ var CTagSSH_VF;
 var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
 const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
+const CTagSSH_PadWidth = 3;
+const CTagSSH_Padding = ' ';
 
 const collapsePathMode = Object.freeze({"left": 1, "center": 2, "right": 3});
 
@@ -132,7 +134,6 @@ function activate(context)
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.test', async () => {
 		var a = 1;
 	}));
-
 }
 
 function deactivate()
@@ -241,7 +242,7 @@ async function loadCTags(tagFilePath)
 		}
 
 		const delim = '  ->  ';
-		let maxlen = 78 - (tagName.length + delim.length);
+		let maxlen = (80-(CTagSSH_PadWidth-1)) - (tagName.length + delim.length);
 		CTagSSH_Tags.push({
 			label: tagName + delim + collapsePath(fileName, maxlen, collapsePathMode.left),
 			tagName: tagName,
@@ -264,47 +265,57 @@ function searchTags()
 		return tag.tagName === query;
 	});
 
-	//Case 1. Only one tag found  
-	if (displayFiles.length === 1) {
-		navigateToDefinition(displayFiles[0]);
+	switch (displayFiles.length) {
 
-	//Case 2. Many tags found
-	} else if (displayFiles.length > 0) {
+		case 0:
+			// No tags found
+			vscode.window.showErrorMessage(`No related tags are found for the '${query}'`);
+			break;
 
-		// extract available extensions from ctagssh settings if any
-		let conf = vscode.workspace.getConfiguration('ctagssh');
-		let CTagSSH_showExtensions = [];
-		let filteredFiles = [];
+		case 1:
+			// Only one tag found
+			navigateToDefinition(displayFiles[0]);
+			break;
 
-		if ("" !== conf.showExtensions) {
+		default:
+			// A list of tags
+			
+			// extract available extensions from ctagssh settings if any
+			let conf = vscode.workspace.getConfiguration('ctagssh');
+			let filterExtensions = [];
+			let filteredFiles = [];
+
+			if ("" !== conf.showExtensions) {
 		
-			CTagSSH_showExtensions = conf.showExtensions.split(/[,;\s]+/).filter((/** @type {string} */ element) => element !== "").map((/** @type {string} */ element) => element.toLowerCase());
-		}
-		// if there are available fltering extensions then filter files list
-		if (0 !== CTagSSH_showExtensions.length) {
+				filterExtensions = conf.showExtensions.split(/[,;\s]+/)
+					.filter((/** @type {string} */ element) => element !== "")
+					.map((/** @type {string} */ element) => element.toLowerCase());
+			}
 
-			const path = require('path');
-			filteredFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => CTagSSH_showExtensions.includes(path.extname(element.filePath).toLowerCase().substring(1)));
-		}
-		if (0 === filteredFiles.length) {
-			filteredFiles = displayFiles;
-		}
-		// enumeration of list of matching tags
-		for (let i = 0; i < filteredFiles.length; i++) {
+			// if there are available fltering extensions then do filtering for files list
+			if (0 !== filterExtensions.length) {
 
-			filteredFiles[i].label = `(${(i + 1).toString().padStart(3, ' ')}) ${filteredFiles[i].label}`;
-		}
-		vscode.window.showQuickPick(filteredFiles, {matchOnDescription: true, matchOnDetail: true})
-			.then(val => {
-				navigateToDefinition(val);
-			})
-			.then(undefined, err => {
-				;
+				filteredFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => 
+					filterExtensions.includes(path.extname(element.filePath).toLowerCase().substring(1)));
+			}
+			if (0 === filteredFiles.length) {
+				filteredFiles = displayFiles;
+			}
+		
+			// enumeration of list of matching tags
+			filteredFiles.forEach((element, index) => {
+
+				element.label = `(${(index + 1).toString().padStart(CTagSSH_PadWidth, CTagSSH_Padding)}) ${element.label}`;
 			});
-	
-	//Case 3. No tags found
-	} else {
-		vscode.window.showErrorMessage(`No related tags are found for the '${query}'`);
+
+			vscode.window.showQuickPick(filteredFiles, {matchOnDescription: true, matchOnDetail: true})
+				.then(val => {
+					navigateToDefinition(val);
+				})
+				.then(undefined, err => {
+					;
+				});
+			break;
 	}
 }
 
