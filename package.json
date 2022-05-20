@@ -78,10 +78,10 @@
 					"default": null,
 					"description": "user password"
 				},
-				"ctagssh.ctagsfilesfolder": {
+				"ctagssh.ctagsFilesRemotePath": {
 					"type": "string",
 					"default": null,
-					"description": "folder contains .ctag files (not impliment)"
+					"description": "Remote folder path containing possible .ctag files"
 				},
 				"ctagssh.fileCtags": {
 					"type": "string",
@@ -90,7 +90,7 @@
 				},
 				"ctagssh.showExtensions": {
 					"type": "string",
-					"default": "",
+					"default": null,
 					"description": "List of source code file extensions used as filter for dropdown menu of searched tag variants. Ex: h, c, cpp"
 				},
 				"ctagssh.usingSSHFS": {
