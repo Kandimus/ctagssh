@@ -2,12 +2,13 @@ const vscode = require('vscode');
 var path = require('path');
 var LineByLine = require('n-readlines');
 var sshvf = require('./TextDocumentProvider.js');
-//var Math = require('math');
+var Settings = require('./Settings.js');
 
 var CTagSSH_Tags = undefined;
 var CTagSSH_VF;
 var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
+var CTagSSH_Settings;
 const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
 const CTagSSH_PadWidth = 3;
 const CTagSSH_Padding = ' ';
@@ -89,6 +90,11 @@ function getRandomInt(max) {
 function activate(context)
 {
 	console.log('The extension "ctagssh" is now active!');
+
+	CTagSSH_Settings = new Settings.Settings("ctagssh.json");
+	let b = CTagSSH_Settings.get().Kuku;
+	CTagSSH_Settings.get().Kuku = b + 1;
+	CTagSSH_Settings.save();
 
 	// Add status bar
 	CTagSSH_StatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
