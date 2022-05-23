@@ -23,6 +23,10 @@
 				"title": "ctagssh.reconnect"
 			},
 			{
+				"command": "ctagssh.loadRemoteCTags",
+				"title": "ctagssh.loadRemoteCTags"
+			},
+			{
 				"command": "ctagssh.gotoTag",
 				"title": "ctagssh.gotoTag"
 			},
@@ -47,7 +51,14 @@
 				"key": "ctrl+shift+F12",
 				"mac": "ctrl+shift+F12",
 				"when": "editorTextFocus"
+			},
+			{
+				"command": "ctagssh.loadRemoteCTags",
+				"key": "shift+F11",
+				"mac": "shift+F11",
+				"when": "editorTextFocus"
 			}
+
 		],
 		"configuration": {
 			"id": "ctagssh",
