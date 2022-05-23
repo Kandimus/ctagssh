@@ -27,8 +27,8 @@
 				"title": "ctagssh.gotoTag"
 			},
 			{
-				"command": "ctagssh.print",
-				"title": "ctagssh.print"
+				"command": "ctagssh.menu",
+				"title": "ctagssh.menu"
 			}
 		],
 		"keybindings": [
@@ -77,6 +77,11 @@
 					"type": "string",
 					"default": "",
 					"description": "List of source code file extensions used as filter for dropdown menu of searched tag variants. Ex: h, c, cpp"
+				},
+				"ctagssh.usingSSHFS": {
+					"type": "boolean",
+					"default": "false",
+					"description": "Using connection settings on SSH FS extension"
 				}
 			}
 		}

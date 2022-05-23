@@ -34,6 +34,10 @@ var CTagSSHVF = /** @class */ (function ()
 		async connect(config)
 		{
 			this.config = config;
+
+			if (!Number.isInteger(this.config.port)) {
+				this.config.port = 22;
+			}
 			console.log(`SSH2 connecting to remote server ${this.config.username}@${this.config.host}:${this.config.port}...`);
 
 			this.ssh = new sshClient(this.config);
