@@ -152,11 +152,14 @@ module.exports = {
 	deactivate
 }
 
+/**
+ * @brief Show externsion's quick menu
+ */
 async function showMenu()
 {
 	let menuGlobal = [
-		{label: "Reconnect to host"    , id: 0},
-		{label: "Disconnect from host"    , id: 1}
+		{label: "Connect to host"     , id: 0},
+		{label: "Disconnect from host", id: 1}
 	];
 	let conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
 	
@@ -188,7 +191,6 @@ async function showMenu()
 		});
 }
 
-
 /**
  * @brief Connect to remote host, read .ctags file from disk and update StatusBar
  * 
@@ -207,18 +209,17 @@ async function connectToSSH()
 		// Check for extension "SSH FS"
 		let conf_sshfs = vscode.workspace.getConfiguration(sshfs);
 		if (conf_sshfs !== undefined) {
-			let countOfConnection = conf_sshfs.configs.length;
-			for (let ii = 0; ii < countOfConnection; ++ii) {
-				if (CTagSSH_Settings.get().sshfs.profile == conf_sshfs.configs[ii].name) {
+			conf_sshfs.configs.every(element => {
+				if (CTagSSH_Settings.get().sshfs.profile == element.name) {
 					console.log(`Using connection settings from profile "${CTagSSH_Settings.get().sshfs.profile}" of SSHFS extension!`);
-					conf.host = conf_sshfs.configs[ii].host;
-					conf.port = conf_sshfs.configs[ii].port;
-					conf.username = conf_sshfs.configs[ii].username;
-					conf.password = conf_sshfs.configs[ii].password;
+					conf.host = element.host;
+					conf.port = (element.port === undefined) ? 22 : element.port;
+					conf.username = element.username;
+					conf.password = element.password;
 					found = true;
-					break;
 				}
-			}
+				return !found;
+			});
 		}
 	}
 
@@ -250,21 +251,20 @@ async function connectToSSH()
 
 function selectProfileSSHFS()
 {
-	let profileList = [];
-	let err = true;
-
 	let conf_sshfs = vscode.workspace.getConfiguration(sshfs);
+
 	if (conf_sshfs !== undefined) {
-		let countOfConnection = conf_sshfs.configs.length;
-		if (countOfConnection > 0) {
-			for (let ii = 0; ii < countOfConnection; ++ii) {
+		if (conf_sshfs.configs.length > 0) {
+			let profileList = [];
+
+			conf_sshfs.configs.forEach(element => {
 				profileList.push({
-					label: conf_sshfs.configs[ii].name
+					label: element.name
 				});
-			}
+			});
+
 			vscode.window.showQuickPick(profileList, {matchOnDescription: true, matchOnDetail: true})
 				.then(val => {
-					err = false;
 					CTagSSH_Settings.get().sshfs.profile = val.label;
 					CTagSSH_Settings.save();
 					connectToSSH();
