@@ -202,14 +202,14 @@ async function connectToSSH()
 	updateStatusBar(CTagSSHMode.Connecting);
 
 	let conf = {};
-	let conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
+	const conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
 	let found = false;
 	
-	if (conf_ctagssh.usingSSHFS === true) {
+	if (conf_ctagssh.usingSSHFS === true && ('sshfs' in CTagSSH_Settings.get()) && ('profile' in CTagSSH_Settings.get().sshfs)) {
 		// Check for extension "SSH FS"
 		let conf_sshfs = vscode.workspace.getConfiguration(sshfs);
 		if (conf_sshfs !== undefined) {
-			conf_sshfs.configs.every(element => {
+			conf_sshfs.configs.every((/** @type {{ name: any; host: any; port: any; username: any; password: any; }} */ element) => {
 				if (CTagSSH_Settings.get().sshfs.profile == element.name) {
 					console.log(`Using connection settings from profile "${CTagSSH_Settings.get().sshfs.profile}" of SSHFS extension!`);
 					conf.host = element.host;
@@ -225,12 +225,14 @@ async function connectToSSH()
 
 	if (!found) {
 		console.log('Using connection settings from CTagSSH!');
-		// @ts-ignore
-		conf = conf_ctagssh;
+		conf.host = conf_ctagssh.host;
+		conf.port = ('port' in conf_ctagssh) && (Number.isInteger(conf_ctagssh.port)) ? 22 : conf_ctagssh.port;
+		conf.username = conf_ctagssh.username;
+		conf.password = conf_ctagssh.password;
 	}
 
 	if (CTagSSH_Tags === undefined) {
-		let filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags)
+		const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags)
 
 		console.log(`Reading tags from: '${filename}'`);
 		loadCTags(filename).then(() => {
@@ -251,7 +253,7 @@ async function connectToSSH()
 
 function selectProfileSSHFS()
 {
-	let conf_sshfs = vscode.workspace.getConfiguration(sshfs);
+	const conf_sshfs = vscode.workspace.getConfiguration(sshfs);
 
 	if (conf_sshfs !== undefined) {
 		if (conf_sshfs.configs.length > 0) {
@@ -265,6 +267,9 @@ function selectProfileSSHFS()
 
 			vscode.window.showQuickPick(profileList, {matchOnDescription: true, matchOnDetail: true})
 				.then(val => {
+					if (!('sshfs' in CTagSSH_Settings.get())) {
+						CTagSSH_Settings.get().sshfs = {};
+					}
 					CTagSSH_Settings.get().sshfs.profile = val.label;
 					CTagSSH_Settings.save();
 					connectToSSH();
