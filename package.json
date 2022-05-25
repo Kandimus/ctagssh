@@ -91,8 +91,13 @@
 				},
 				"ctagssh.ctagsFilesRemotePath": {
 					"type": "string",
-					"default": null,
-					"description": "Remote folder path containing possible .ctag files"
+					"default": "",
+					"description": "Remote folder path containing possible CTags files"
+				},
+				"ctagssh.ctagsExtensions": {
+					"type": "string",
+					"default": "",
+					"description": "List of CTags file extensions used as filter for remote folder browsing"
 				},
 				"ctagssh.fileCtags": {
 					"type": "string",
@@ -101,7 +106,7 @@
 				},
 				"ctagssh.showExtensions": {
 					"type": "string",
-					"default": null,
+					"default": "",
 					"description": "List of source code file extensions used as filter for dropdown menu of searched tag variants. Ex: h, c, cpp"
 				},
 				"ctagssh.usingSSHFS": {

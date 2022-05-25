@@ -311,11 +311,16 @@ async function loadRemoteCTags()
 
 	let conf = vscode.workspace.getConfiguration('ctagssh');
 
-	if ("" != conf.ctagsFilesRemotePath) {
+	if ("" !== conf.ctagsFilesRemotePath) {
 
-		await CTagSSH_VF.sftp.readdir()
+		await CTagSSH_VF.sftp.readdir(conf.ctagsFilesRemotePath)
 			.then(data => {
 				
+				/*
+				data[n].attrs.size
+				data[n].filename
+				 */
+
 				return Promise.resolve('');
 
 			})
@@ -331,7 +336,7 @@ async function loadRemoteCTags()
 				this.connect(this.config);
 				return Promise.reject(`sftp.readFile returns error:'${err.message}' on load file '${filepath}'. Reconnect`);
 				*/
-	});
+		});
 	}
 }
 
@@ -416,7 +421,6 @@ function searchTags()
 		return tag.tagName === query;
 	});
 
-	const newLocal = "";
 	switch (displayFiles.length) {
 
 		case 0:
@@ -437,7 +441,7 @@ function searchTags()
 			let filterExtensions = [];
 			let filteredFiles = [];
 
-			if (newLocal !== conf.showExtensions) {
+			if ("" !== conf.showExtensions) {
 		
 				filterExtensions = conf.showExtensions.split(/[,;\s]+/)
 					.filter((/** @type {string} */ element) => element !== "")
