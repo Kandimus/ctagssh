@@ -291,7 +291,7 @@ function selectProfileSSHFS()
 	}
 }
 
-function loadRemoteCTags()
+async function loadRemoteCTags()
 {
 	/* 
 	проверить назначенную удаленную папку
@@ -309,7 +309,30 @@ function loadRemoteCTags()
 		распаковка и загрузка (loadCTags)
 	}*/
 
-	await CTagSSH_VF.sftp.readdir();
+	let conf = vscode.workspace.getConfiguration('ctagssh');
+
+	if ("" != conf.ctagsFilesRemotePath) {
+
+		await CTagSSH_VF.sftp.readdir()
+			.then(data => {
+				
+				return Promise.resolve('');
+
+			})
+			.then(undefined, err => {
+				return Promise.reject(err.message);
+				/*
+				if (err.message == 'No such file') {
+					return Promise.reject(`The file '${filepath}' not found on remote host.`);
+				}
+
+				this.disconnect();
+				console.error(`sftp.readFile returns error:'${err.message}' on load file '${filepath}'. Reconnect`);
+				this.connect(this.config);
+				return Promise.reject(`sftp.readFile returns error:'${err.message}' on load file '${filepath}'. Reconnect`);
+				*/
+	});
+	}
 }
 
 
@@ -393,6 +416,7 @@ function searchTags()
 		return tag.tagName === query;
 	});
 
+	const newLocal = "";
 	switch (displayFiles.length) {
 
 		case 0:
@@ -413,7 +437,7 @@ function searchTags()
 			let filterExtensions = [];
 			let filteredFiles = [];
 
-			if ("" !== conf.showExtensions) {
+			if (newLocal !== conf.showExtensions) {
 		
 				filterExtensions = conf.showExtensions.split(/[,;\s]+/)
 					.filter((/** @type {string} */ element) => element !== "")

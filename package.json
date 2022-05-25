@@ -97,7 +97,7 @@
 				"ctagssh.fileCtags": {
 					"type": "string",
 					"default": ".ctags",
-					"description": "A file containing information about CTags. This is usually a '.ctags' or '.tags' file."
+					"description": "Local CTags file. Usually it is '.ctags' or '.tags' file."
 				},
 				"ctagssh.showExtensions": {
 					"type": "string",
