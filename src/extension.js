@@ -134,7 +134,9 @@ function activate(context)
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.menu', async () => {
 		showMenu();
 	}));
-
+	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.loadRemoteCTags', () => {
+		loadRemoteCTags();
+	}));
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.test', async () => {
 		var a = 1;
 	}));
@@ -288,6 +290,28 @@ function selectProfileSSHFS()
 		}
 	}
 }
+
+function loadRemoteCTags()
+{
+	/* 
+	проверить назначенную удаленную папку
+	если {папка не указана}, значит 
+	{ 
+		пробуем загрузить с диска локально: loadCTags
+	} иначе {
+		обращаемся удаленно на сервер и заполняем
+		список файлов в папке для выбора;
+
+		запуск меню выбора
+
+		упаковка выбранного файла тэгов и загрузка архива
+		в локальную папку (https://code.visualstudio.com/api/extension-capabilities/common-capabilities#progress-api), 
+		распаковка и загрузка (loadCTags)
+	}*/
+
+	await CTagSSH_VF.sftp.readdir();
+}
+
 
 /**
  * @param {import("fs").PathLike} tagFilePath
