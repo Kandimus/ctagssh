@@ -174,7 +174,7 @@ async function showMenu()
 		menuGlobal.push({label: "Set profile on SSH FS ->", id: 2});
 	}
 
-	vscode.window.showQuickPick(menuGlobal, {matchOnDescription: true, matchOnDetail: true})
+	vscode.window.showQuickPick(menuGlobal, {/* title: "DESCRIPTION", */matchOnDescription: true, matchOnDetail: true})
 		.then(val => {
 			switch(val.id) {
 				case 0:
@@ -413,6 +413,24 @@ async function loadCTags(tagFilePath)
 	return Promise.resolve();
 }
 
+function deepcopy(aObject) {
+	 
+	let bObject = Array.isArray(aObject) ? [] : {};
+  
+	let value;
+	for (const key in aObject) {
+  
+	  // Prevent self-references to parent object
+	  // if (Object.is(aObject[key], aObject)) continue;
+	  
+	  value = aObject[key];
+  
+	  bObject[key] = (typeof value === "object") ? deepcopy(value) : value;
+	}
+  
+	return bObject;
+  }
+
 function searchTags()
 {
 	let query = getSelectedText(vscode.window.activeTextEditor);
@@ -439,7 +457,7 @@ function searchTags()
 			// extract available extensions from ctagssh settings if any
 			let conf = vscode.workspace.getConfiguration('ctagssh');
 			let filterExtensions = [];
-			let filteredFiles = [];
+			let tmpFiles = [];
 
 			if ("" !== conf.showExtensions) {
 		
@@ -451,20 +469,24 @@ function searchTags()
 			// if there are available fltering extensions then do filtering for files list
 			if (0 !== filterExtensions.length) {
 
-				filteredFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => 
+				tmpFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => 
 					filterExtensions.includes(path.extname(element.filePath).toLowerCase().substring(1)));
 			}
-			if (0 === filteredFiles.length) {
-				filteredFiles = displayFiles;
+			if (0 === tmpFiles.length) {
+				tmpFiles = displayFiles;
 			}
-		
+			
+			let filteredFiles = tmpFiles.map(dc => Object.assign({}, dc));
+			//let filteredFiles = dcopy(tmpFiles);
 			// enumeration of list of matching tags
 			filteredFiles.forEach((element, index) => {
 
+				//filteredFiles.push(element);
 				element.label = `(${(index + 1).toString().padStart(CTagSSH_PadWidth, CTagSSH_Padding)}) ${element.label}`;
+				//filteredFiles[index].label = `(${(index + 1).toString().padStart(CTagSSH_PadWidth, CTagSSH_Padding)}) ${element.label}`;
 			});
 
-			vscode.window.showQuickPick(filteredFiles, {matchOnDescription: true, matchOnDetail: true})
+			vscode.window.showQuickPick(filteredFiles, {title: "Variants", matchOnDescription: true, matchOnDetail: true})
 				.then(val => {
 					navigateToDefinition(val);
 				})
