@@ -321,6 +321,8 @@ async function loadRemoteCTags()
 				data[n].filename
 				 */
 
+				// формируем массив файлов, сортируем, отображаем в меню.
+
 				return Promise.resolve('');
 
 			})
