@@ -106,7 +106,7 @@
 				},
 				"ctagssh.showExtensions": {
 					"type": "string",
-					"default": null,
+					"default": "",
 					"description": "List of source code file extensions used as filter for dropdown menu of searched tag variants. Ex: h, c, cpp"
 				},
 				"ctagssh.usingSSHFS": {

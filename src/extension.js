@@ -320,6 +320,62 @@ async function loadRemoteCTags()
 				data[n].attrs.size
 				data[n].filename
 				 */
+				/*++++++++++++++++++++++++++++++++*/
+				
+				// extract available extensions from ctagssh settings if any
+				let ctagsExtensions = [];
+				let tmpFiles = [];
+
+				if ("" !== conf.ctagsExtensions) {
+
+					ctagsExtensions = conf.ctagsExtensions.split(/[,;\s]+/)
+						.filter((/** @type {string} */ element) => element !== "")
+						.map((/** @type {string} */ element) => element.toLowerCase());
+				}
+
+				// if there are available fltering extensions then do filtering for files list
+				if (0 !== ctagsExtensions.length) {
+
+					tmpFiles = data.filter((element) => 
+						element.attrs.isFile() && ctagsExtensions.includes(path.extname(element.filename).toLowerCase().substring(1)));
+				}
+				
+				if (0 === tmpFiles.length) {
+					tmpFiles = data.filter((element) => element.attrs.isFile());
+				}
+				let ctagsFilesList = [];
+				tmpFiles.sort((a, b) => {
+					
+					const A = a.filename.toUpperCase(); // ignore upper and lowercase
+  					const B = b.filename.toUpperCase(); // ignore upper and lowercase
+  					
+					return A < B ? -1 : A > B ? 1 : 0;
+					})
+					.forEach((element, index) => {
+
+						if (element.attrs.isFile()) {
+	
+							ctagsFilesList.push({
+								label : element.attrs.size.toString().padStart(10, CTagSSH_Padding) 
+								+ " "
+								+ new Date(element.attrs.mtime).toISOString().replace(/T/, ' ').replace(/\..+/, '') // won't work!!!
+								//+ element.attrs.mtime
+								+ " "
+								+ element.filename,
+								filename : element.filename
+							});
+							console.log("Using stat: " + element.attrs.mtime);
+						}
+					});
+
+				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
+					.then(val => {
+						;
+					})
+					.then(undefined, err => {
+						;
+					});
+				/*++++++++++++++++++++++++++++++++*/
 
 				// формируем массив файлов, сортируем, отображаем в меню.
 
