@@ -316,12 +316,6 @@ async function loadRemoteCTags()
 		await CTagSSH_VF.sftp.readdir(conf.ctagsFilesRemotePath)
 			.then(data => {
 				
-				/*
-				data[n].attrs.size
-				data[n].filename
-				 */
-				/*++++++++++++++++++++++++++++++++*/
-				
 				// extract available extensions from ctagssh settings if any
 				let ctagsExtensions = [];
 				let tmpFiles = [];
@@ -351,49 +345,24 @@ async function loadRemoteCTags()
   					
 					return A < B ? -1 : A > B ? 1 : 0;
 					})
-					.forEach((element, index) => {
+					.forEach((/** @type {{ attrs: { size: { toString: () => string; }; mtime: number; }; filename: any; }} */ element) => {
 
-						if (element.attrs.isFile()) {
-	
-							ctagsFilesList.push({
-								label : element.attrs.size.toString().padStart(10, CTagSSH_Padding) 
-								+ " "
-								+ new Date(element.attrs.mtime).toISOString().replace(/T/, ' ').replace(/\..+/, '') // won't work!!!
-								//+ element.attrs.mtime
-								+ " "
-								+ element.filename,
-								filename : element.filename
-							});
-							console.log("Using stat: " + element.attrs.mtime);
-						}
+						ctagsFilesList.push({
+							label : `${element.attrs.size.toString().padStart(10, CTagSSH_Padding)}\t${new Date(element.attrs.mtime * 1000 /*msecs*/).toISOString().replace(/T/, ' ').replace(/\..+/, '')}\t${element.filename}`,
+							filename : element.filename
+						});
 					});
 
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(val => {
-						;
+						return Promise.resolve('');
 					})
 					.then(undefined, err => {
-						;
+						return Promise.reject(err.message);
 					});
-				/*++++++++++++++++++++++++++++++++*/
-
-				// формируем массив файлов, сортируем, отображаем в меню.
-
-				return Promise.resolve('');
-
 			})
 			.then(undefined, err => {
 				return Promise.reject(err.message);
-				/*
-				if (err.message == 'No such file') {
-					return Promise.reject(`The file '${filepath}' not found on remote host.`);
-				}
-
-				this.disconnect();
-				console.error(`sftp.readFile returns error:'${err.message}' on load file '${filepath}'. Reconnect`);
-				this.connect(this.config);
-				return Promise.reject(`sftp.readFile returns error:'${err.message}' on load file '${filepath}'. Reconnect`);
-				*/
 		});
 	}
 }
