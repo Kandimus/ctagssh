@@ -340,8 +340,8 @@ async function loadRemoteCTags()
 				let ctagsFilesList = [];
 				tmpFiles.sort((a, b) => {
 					
-					const A = a.filename.toUpperCase(); // ignore upper and lowercase
-  					const B = b.filename.toUpperCase(); // ignore upper and lowercase
+					const A = a.filename;//.toUpperCase();
+  					const B = b.filename;//.toUpperCase();
   					
 					return A < B ? -1 : A > B ? 1 : 0;
 					})
@@ -354,7 +354,25 @@ async function loadRemoteCTags()
 					});
 
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
-					.then(val => {
+					.then(async val => {
+
+						const rndCompressedFile = CTagSSH_VF.statTempFile + getRandomInt(16777216).toString(16);
+						const inputFile = conf.ctagsFilesRemotePath + val.filename;
+						
+						//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
+						const execLine = "gzip -cfN9 "+ inputFile + " > " + rndCompressedFile;
+
+						try {
+							//await CTagSSH_VF.ssh.exec(execLine);
+							CTagSSH_VF.ssh.exec('echo "Hello from localhost" > ~/hello.test'); //!!!!
+							await CTagSSH_VF.sftp.readFile(rndCompressedFile).then(data => {
+									;
+							});
+						} catch(err) {
+							console.error(`Compressor remote execution failed!`);
+							return Promise.reject(err.message);
+						}
+
 						return Promise.resolve('');
 					})
 					.then(undefined, err => {
@@ -504,13 +522,11 @@ function searchTags()
 			}
 			
 			let filteredFiles = tmpFiles.map(dc => Object.assign({}, dc));
-			//let filteredFiles = dcopy(tmpFiles);
+			//let filteredFiles = deepcopy(tmpFiles);
 			// enumeration of list of matching tags
 			filteredFiles.forEach((element, index) => {
 
-				//filteredFiles.push(element);
 				element.label = `(${(index + 1).toString().padStart(CTagSSH_PadWidth, CTagSSH_Padding)}) ${element.label}`;
-				//filteredFiles[index].label = `(${(index + 1).toString().padStart(CTagSSH_PadWidth, CTagSSH_Padding)}) ${element.label}`;
 			});
 
 			vscode.window.showQuickPick(filteredFiles, {title: "Variants", matchOnDescription: true, matchOnDetail: true})
