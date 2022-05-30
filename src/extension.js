@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-var path = require('path');
+var path = require('path'), pathPosix = require('path/posix');
 var LineByLine = require('n-readlines');
 var sshvf = require('./TextDocumentProvider.js');
 var Settings = require('./Settings.js');
@@ -355,27 +355,58 @@ async function loadRemoteCTags()
 
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(async val => {
-
-						let pathPosix = require('path/posix');
-
 						const rndCompressedFile = CTagSSH_VF.statTempFile + getRandomInt(16777216).toString(16);
 						const inputFile = pathPosix.join(conf.ctagsFilesRemotePath, val.filename);
-						
 						//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
-						const execLine = "gzip -cfN9 "+ inputFile + " > " + rndCompressedFile;
-
+						const execLine = gzipExecLine(inputFile, rndCompressedFile);
 						try {
+							{
+								vscode.window.withProgress({
+									location: vscode.ProgressLocation.Notification,
+									title: "I am long running!",
+									cancellable: true
+								}, async (progress, token) => {
+									token.onCancellationRequested(() => {
+										console.log("User canceled the long running operation");
+									});
+						
+									progress.report({ increment: 0 });
+						
+									setTimeout(() => {
+										progress.report({ increment: 10, message: "I am long running! - still going..." });
+									}, 1000);
+						
+									setTimeout(() => {
+										progress.report({ increment: 30, message: "I am long running! - still going even more..." });
+									}, 2000);
+						
+									setTimeout(() => {
+										progress.report({ increment: 60, message: "I am long running! - almost there..." });
+									}, 3000);
+						
+									const p = new Promise(resolve => {
+										setTimeout(() => {
+											resolve();
+										}, 9000);
+									});
+						
+									return p;
+								});
+							}
+							console.log('Gzipping file: ' + inputFile);
 							await CTagSSH_VF.ssh.exec(execLine);
-							//await CTagSSH_VF.ssh.exec('echo "Hello from localhost" > /amdusr/michaese/hello.test'); //!!!!
+							console.log('File ' + inputFile + ' gzipped');
+
+							console.log('Fetching file: ' + inputFile);
 							await CTagSSH_VF.sftp.readFile(rndCompressedFile).then(data => {
-									;
+								
+								console.log('File ' + inputFile + ' fetched');
 							});
 						} catch(err) {
 							console.error(`Compressor remote execution failed!`);
 							let a = "" + err;
 							return Promise.reject(err.message);
 						}
-
 						return Promise.resolve('');
 					})
 					.then(undefined, err => {
@@ -388,6 +419,12 @@ async function loadRemoteCTags()
 	}
 }
 
+
+function gzipExecLine(inputFile, rndCompressedFile) {
+
+	//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
+	return `gzip -cfN9 ${inputFile} > ${rndCompressedFile}`;
+}
 
 /**
  * @param {import("fs").PathLike} tagFilePath
