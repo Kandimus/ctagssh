@@ -356,20 +356,23 @@ async function loadRemoteCTags()
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(async val => {
 
+						let pathPosix = require('path/posix');
+
 						const rndCompressedFile = CTagSSH_VF.statTempFile + getRandomInt(16777216).toString(16);
-						const inputFile = conf.ctagsFilesRemotePath + val.filename;
+						const inputFile = pathPosix.join(conf.ctagsFilesRemotePath, val.filename);
 						
 						//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
 						const execLine = "gzip -cfN9 "+ inputFile + " > " + rndCompressedFile;
 
 						try {
-							//await CTagSSH_VF.ssh.exec(execLine);
-							CTagSSH_VF.ssh.exec('echo "Hello from localhost" > ~/hello.test'); //!!!!
+							await CTagSSH_VF.ssh.exec(execLine);
+							//await CTagSSH_VF.ssh.exec('echo "Hello from localhost" > /amdusr/michaese/hello.test'); //!!!!
 							await CTagSSH_VF.sftp.readFile(rndCompressedFile).then(data => {
 									;
 							});
 						} catch(err) {
 							console.error(`Compressor remote execution failed!`);
+							let a = "" + err;
 							return Promise.reject(err.message);
 						}
 
