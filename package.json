@@ -1,7 +1,7 @@
 {
 	"name": "ctagssh",
 	"description": "CTags support via SSH",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"publisher": "Kandimus",
 	"icon": "images/icon.png",
 	"repository": "https://github.com/Kandimus/ctagsssh",
@@ -27,6 +27,10 @@
 				"title": "ctagssh.gotoTag"
 			},
 			{
+				"command": "ctagssh.back",
+				"title": "ctagssh.back"
+			},
+			{
 				"command": "ctagssh.menu",
 				"title": "ctagssh.menu"
 			}
@@ -37,12 +41,23 @@
 				"key": "shift+F12",
 				"mac": "shift+F12",
 				"when": "editorTextFocus"
+			},
+			{
+				"command": "ctagssh.back",
+				"key": "ctrl+shift+F12",
+				"mac": "ctrl+shift+F12",
+				"when": "editorTextFocus"
 			}
 		],
 		"configuration": {
 			"id": "ctagssh",
 			"title": "CTagSSH Configuration",
 			"properties": {
+				"ctagssh.openFileInNewWindow": {
+					"type": "boolean",
+					"default": "false",
+					"description": "The file contain tag will to open in a new window"
+				},
 				"ctagssh.host": {
 					"type": "string",
 					"default": "127.0.0.1",
