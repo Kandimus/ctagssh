@@ -5,6 +5,7 @@ var sshvf = require('./TextDocumentProvider.js');
 var Settings = require('./Settings.js');
 
 var CTagSSH_Tags = undefined;
+var CTagSSH_History = [];
 var CTagSSH_VF;
 var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
@@ -13,6 +14,7 @@ const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connecte
 const CTagSSH_PadWidth = 3;
 const CTagSSH_Padding = ' ';
 const sshfs = "sshfs";
+const ctagsshvf = "ctagsshvf";
 
 const collapsePathMode = Object.freeze({"left": 1, "center": 2, "right": 3});
 
@@ -105,7 +107,7 @@ function activate(context)
 
 	// Registering new TextDocumentContentProvider
 	CTagSSH_VF = new sshvf.CTagSSHVF();
-	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('ctagsshvf', CTagSSH_VF));
+	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(ctagsshvf, CTagSSH_VF));
 	
 	// Check on active workspace
 	if (vscode.workspace.workspaceFolders === undefined) {
@@ -120,6 +122,9 @@ function activate(context)
 	// Registering commands
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.gotoTag', () => {
 		searchTags();
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.back', () => {
+		moveToBack();
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.reconnect', async () => {
 		if(!CTagSSH_VF.isConnected) {
@@ -424,16 +429,19 @@ async function navigateToDefinition(tag)
 		return;
 	}
 
+	CTagSSH_History.push({fileUri: vscode.window.activeTextEditor.document.uri, lineno: vscode.window.activeTextEditor.selection.start.line});
+
 	//console.log('navigateToDefinition: filePath = "' + tag.filePath + '" pattern = "' + tag.pattern + '"');
-	const uri = vscode.Uri.parse('ctagsshvf:' + getRandomInt(255).toString(16) + CTagSSH_VF.separator + tag.filePath);
+	const uri = vscode.Uri.parse(`${ctagsshvf}:${getRandomInt(255).toString(16)}${CTagSSH_VF.separator}${tag.filePath}`);
 	console.log('Virtual file: ' + uri.path);
 	
 	updateStatusBar(CTagSSHMode.Download);
 	await CTagSSH_VF.preload_file(uri)
 		.then(async () => {
 			let lineNumber = -1;
+			const conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
 			let doc = await vscode.workspace.openTextDocument(uri);
-			let textEdit = await vscode.window.showTextDocument(doc, { preview: true });
+			let textEdit = await vscode.window.showTextDocument(doc, { preview: !conf_ctagssh.openFileInNewWindow });
 
 			updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 
@@ -449,9 +457,7 @@ async function navigateToDefinition(tag)
 			}
 
 			if (lineNumber >= 0) {
-				let newSelection = new vscode.Selection(lineNumber, 0, lineNumber, 0);
-				vscode.window.activeTextEditor.selection = newSelection;
-				vscode.window.activeTextEditor.revealRange(newSelection, vscode.TextEditorRevealType.InCenter);
+				setSelectionText(vscode.window.activeTextEditor, lineNumber);
 			} else {
 				vscode.window.showErrorMessage(`Tag "${tag.tagName}" is not found in the "${tag.filePath}"`);
 			}
@@ -477,6 +483,17 @@ function getSelectedText(editor)
 }
 
 /**
+ * @param {vscode.TextEditor} editor
+ * @param {number} lineno
+ */
+function setSelectionText(editor, lineno)
+{
+	let newSelection = new vscode.Selection(lineno, 0, lineno, 0);
+	editor.selection = newSelection;
+	editor.revealRange(newSelection, vscode.TextEditorRevealType.InCenter);
+}
+
+/**
  * @param {string} text
  * @param {string | RegExp} reg
  */
@@ -499,3 +516,23 @@ function findLineNumByPattern(text, reg)
 
 	return found ? lineNumber : -1;
 };
+
+async function moveToBack()
+{
+	if (CTagSSH_History.length <= 0) {
+		return;
+	}
+
+	let element = CTagSSH_History.pop();
+
+	if (element.fileUri.scheme == ctagsshvf) {
+		updateStatusBar(CTagSSHMode.Download);
+		await CTagSSH_VF.preload_file(element.fileUri);
+	}
+
+	const conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
+	let doc = await vscode.workspace.openTextDocument(element.fileUri);
+	let textEdit = await vscode.window.showTextDocument(doc, { preview: !conf_ctagssh.openFileInNewWindow});
+
+	setSelectionText(vscode.window.activeTextEditor, element.lineno);
+}
