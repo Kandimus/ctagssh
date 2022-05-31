@@ -1,6 +1,10 @@
 const vscode = require('vscode');
 var path = require('path'), pathPosix = require('path/posix');
 var LineByLine = require('n-readlines');
+
+var zlib = require('zlib');
+var fs = require('fs');
+
 var sshvf = require('./TextDocumentProvider.js');
 var Settings = require('./Settings.js');
 
@@ -10,7 +14,15 @@ var CTagSSH_VF;
 var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
 var CTagSSH_Settings;
-const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
+
+const CTagSSHMode = Object.freeze(
+	{"NotConnected": 1, 
+	"Connecting": 2, 
+	"Connected": 3, 
+	"Download" : 4,
+	"RemoteDownload" : 5
+});
+
 const CTagSSH_PadWidth = 3;
 const CTagSSH_Padding = ' ';
 const sshfs = "sshfs";
@@ -75,6 +87,12 @@ function updateStatusBar(mode)
 			CTagSSH_StatusBar.text = '| $(extensions-install-count) CTagSSH |';
 			CTagSSH_StatusBar.color = "#0000EE";
 			CTagSSH_StatusBar.tooltip = "Downloading";
+			break;
+			
+		case CTagSSHMode.RemoteDownload:
+			CTagSSH_StatusBar.text = '| $(extensions-install-count) CTagSSH |';
+			CTagSSH_StatusBar.color = "#FF00FF";
+			CTagSSH_StatusBar.tooltip = "Remote downloading";
 			break;
 	}
 
@@ -239,7 +257,7 @@ async function connectToSSH()
 	}
 
 	if (CTagSSH_Tags === undefined) {
-		const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags)
+		const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
 
 		console.log(`Reading tags from: '${filename}'`);
 		loadCTags(filename).then(() => {
@@ -340,8 +358,8 @@ async function loadRemoteCTags()
 				let ctagsFilesList = [];
 				tmpFiles.sort((a, b) => {
 					
-					const A = a.filename;//.toUpperCase();
-  					const B = b.filename;//.toUpperCase();
+					const A = a.filename;
+  					const B = b.filename;
   					
 					return A < B ? -1 : A > B ? 1 : 0;
 					})
@@ -355,53 +373,44 @@ async function loadRemoteCTags()
 
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(async val => {
+						
 						const rndCompressedFile = CTagSSH_VF.statTempFile + getRandomInt(16777216).toString(16);
+						const rndFilename = pathPosix.basename(rndCompressedFile);
 						const inputFile = pathPosix.join(conf.ctagsFilesRemotePath, val.filename);
-						//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
 						const execLine = gzipExecLine(inputFile, rndCompressedFile);
+						
 						try {
-							{
-								vscode.window.withProgress({
-									location: vscode.ProgressLocation.Notification,
-									title: "I am long running!",
-									cancellable: true
-								}, async (progress, token) => {
-									token.onCancellationRequested(() => {
-										console.log("User canceled the long running operation");
-									});
-						
-									progress.report({ increment: 0 });
-						
-									setTimeout(() => {
-										progress.report({ increment: 10, message: "I am long running! - still going..." });
-									}, 1000);
-						
-									setTimeout(() => {
-										progress.report({ increment: 30, message: "I am long running! - still going even more..." });
-									}, 2000);
-						
-									setTimeout(() => {
-										progress.report({ increment: 60, message: "I am long running! - almost there..." });
-									}, 3000);
-						
-									const p = new Promise(resolve => {
-										setTimeout(() => {
-											resolve();
-										}, 9000);
-									});
-						
-									return p;
-								});
-							}
-							console.log('Gzipping file: ' + inputFile);
+							updateStatusBar(CTagSSHMode.RemoteDownload);
+							console.log('Gzipping remote file: ' + inputFile);
 							await CTagSSH_VF.ssh.exec(execLine);
-							console.log('File ' + inputFile + ' gzipped');
-
+							console.log('Remote file ' + inputFile + ' was gzipped');
 							console.log('Fetching file: ' + inputFile);
-							await CTagSSH_VF.sftp.readFile(rndCompressedFile).then(data => {
+							
+							const localTmpFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, rndFilename + '.gz');
+							const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, val.filename);
+
+							await CTagSSH_VF.sftp.fastGet(rndCompressedFile, localTmpFile);
+
+							let gunzip = zlib.createGunzip();
+							var r = fs.createReadStream(localTmpFile);
+							var w = fs.createWriteStream(localNewCTagsFile);
+							
+							try{
+							
+								r.pipe(gunzip).pipe(w);
+							}catch(err) {
+							
+								console.error(`Compressor remote execution failed!`);
+								let a = "" + err;
+								return Promise.reject(err.message);
+							}
+
+							console.log('File ' + inputFile + ' was fetched');
+
+							/*await CTagSSH_VF.sftp.readFile(rndCompressedFile).then(data => {
 								
 								console.log('File ' + inputFile + ' fetched');
-							});
+							});*/
 						} catch(err) {
 							console.error(`Compressor remote execution failed!`);
 							let a = "" + err;
