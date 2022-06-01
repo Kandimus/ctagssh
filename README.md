@@ -26,6 +26,7 @@ The colour of extension icon indicate status of connection:
 
 ## Keybinding
 Select the words in the vscode and the press `Shift+F12`.
+Press `Ctrl+Shift+F12` to return to the previos tag.
 
 ## Command
 | Command | Description |
@@ -33,6 +34,7 @@ Select the words in the vscode and the press `Shift+F12`.
 | `ctagssh.gotoTag` | Go to definition of tag under cursor (`Shift+F12`). |
 | `ctagssh.reconnect` | Reconnect to remote host when connection is not established. |
 | `ctagssh.menu` | Opening extension quick menu. You also may be click on extension icon on StatusBar. |
+| `ctagssh.back` | Return to the previos tag. |
 
 ## Issues
 Please submit issues to [ctagssh](https://github.com/Kandimus/ctagsssh)
