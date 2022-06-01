@@ -58,7 +58,6 @@
 				"mac": "shift+F11",
 				"when": "editorTextFocus"
 			}
-
 		],
 		"configuration": {
 			"id": "ctagssh",
@@ -118,9 +117,11 @@
 		}
 	},
 	"dependencies": {
+		"fs": "^0.0.1-security",
 		"n-readlines": "^0.2.7",
 		"split": "^1.0.0",
-		"ssh2-promise": "^1.0.2"
+		"ssh2-promise": "^1.0.2",
+		"zlib": "^1.0.5"
 	},
 	"scripts": {
 		"postinstall": "node ./node_modules/vscode/bin/install"

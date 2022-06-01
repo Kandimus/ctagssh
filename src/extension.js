@@ -5,6 +5,10 @@ var LineByLine = require('n-readlines');
 var zlib = require('zlib');
 var fs = require('fs');
 
+const { promisify } = require('node:util');
+const { pipeline } = require('node:stream');
+const pipe = promisify(pipeline);
+
 var sshvf = require('./TextDocumentProvider.js');
 var Settings = require('./Settings.js');
 
@@ -166,15 +170,19 @@ function deactivate()
 		CTagSSH_StatusBar.dispose();
 	}
 
-	if (CTagSSH_Tags !== undefined) {
-		CTagSSH_Tags = undefined;
-	}
+	freeCTags();
 }
 
 // eslint-disable-next-line no-undef
 module.exports = {
 	activate,
 	deactivate
+}
+
+function freeCTags() {
+	if (CTagSSH_Tags !== undefined) {
+		CTagSSH_Tags = undefined;
+	}
 }
 
 /**
@@ -256,14 +264,7 @@ async function connectToSSH()
 		conf.password = conf_ctagssh.password;
 	}
 
-	if (CTagSSH_Tags === undefined) {
-		const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
-
-		console.log(`Reading tags from: '${filename}'`);
-		loadCTags(filename).then(() => {
-			console.log("Read tags");
-		});
-	}
+	readCTags(conf_ctagssh);
 
 	CTagSSH_VF.connect(conf)
 		.then(() => {
@@ -274,6 +275,17 @@ async function connectToSSH()
 			updateStatusBar(CTagSSHMode.NotConnected);
 			return Promise.reject(err);
 		});
+}
+
+function readCTags(conf_ctagssh) {
+	if (CTagSSH_Tags === undefined) {
+		const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
+
+		console.log(`Reading tags from: '${filename}'`);
+		loadCTags(filename).then(() => {
+			console.log("Read tags");
+		});
+	}
 }
 
 function selectProfileSSHFS()
@@ -309,27 +321,18 @@ function selectProfileSSHFS()
 	}
 }
 
+async function do_gunzip(input, output) {
+	const gunzip = zlib.createGunzip();
+	const source = fs.createReadStream(input);
+	const destination = fs.createWriteStream(output);
+	await pipe(source, gunzip, destination);
+}
+
 async function loadRemoteCTags()
 {
-	/* 
-	проверить назначенную удаленную папку
-	если {папка не указана}, значит 
-	{ 
-		пробуем загрузить с диска локально: loadCTags
-	} иначе {
-		обращаемся удаленно на сервер и заполняем
-		список файлов в папке для выбора;
-
-		запуск меню выбора
-
-		упаковка выбранного файла тэгов и загрузка архива
-		в локальную папку (https://code.visualstudio.com/api/extension-capabilities/common-capabilities#progress-api), 
-		распаковка и загрузка (loadCTags)
-	}*/
-
 	let conf = vscode.workspace.getConfiguration('ctagssh');
 
-	if ("" !== conf.ctagsFilesRemotePath) {
+	if ("" !== conf.ctagsFilesRemotePath && CTagSSH_VF.isConnected == true) {
 
 		await CTagSSH_VF.sftp.readdir(conf.ctagsFilesRemotePath)
 			.then(data => {
@@ -362,14 +365,14 @@ async function loadRemoteCTags()
   					const B = b.filename;
   					
 					return A < B ? -1 : A > B ? 1 : 0;
-					})
-					.forEach((/** @type {{ attrs: { size: { toString: () => string; }; mtime: number; }; filename: any; }} */ element) => {
+				})
+				.forEach((/** @type {{ attrs: { size: { toString: () => string; }; mtime: number; }; filename: any; }} */ element) => {
 
-						ctagsFilesList.push({
-							label : `${element.attrs.size.toString().padStart(10, CTagSSH_Padding)}\t${new Date(element.attrs.mtime * 1000 /*msecs*/).toISOString().replace(/T/, ' ').replace(/\..+/, '')}\t${element.filename}`,
-							filename : element.filename
-						});
+					ctagsFilesList.push({
+						label : `${element.attrs.size.toString().padStart(10, CTagSSH_Padding)}\t${new Date(element.attrs.mtime * 1000 /*msecs*/).toISOString().replace(/T/, ' ').replace(/\..+/, '')}\t${element.filename}`,
+						filename : element.filename
 					});
+				});
 
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(async val => {
@@ -378,44 +381,51 @@ async function loadRemoteCTags()
 						const rndFilename = pathPosix.basename(rndCompressedFile);
 						const inputFile = pathPosix.join(conf.ctagsFilesRemotePath, val.filename);
 						const execLine = gzipExecLine(inputFile, rndCompressedFile);
-						
+						const localTmpFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, rndFilename + '.gz');
+						const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags);
+					
 						try {
+						
+							// change color
 							updateStatusBar(CTagSSHMode.RemoteDownload);
+							
+							// compress remote ctags file with gzip
 							console.log('Gzipping remote file: ' + inputFile);
 							await CTagSSH_VF.ssh.exec(execLine);
 							console.log('Remote file ' + inputFile + ' was gzipped');
-							console.log('Fetching file: ' + inputFile);
 							
-							const localTmpFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, rndFilename + '.gz');
-							const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, val.filename);
-
+							// fetch remote gzipped ctags into local folder
+							console.log('Fetching file locally: ' + inputFile);
 							await CTagSSH_VF.sftp.fastGet(rndCompressedFile, localTmpFile);
-
-							let gunzip = zlib.createGunzip();
-							var r = fs.createReadStream(localTmpFile);
-							var w = fs.createWriteStream(localNewCTagsFile);
 							
-							try{
+							// decompress local gzipped ctags
+							await do_gunzip(localTmpFile, localNewCTagsFile);
+							freeCTags();
+							readCTags(conf);
 							
-								r.pipe(gunzip).pipe(w);
-							}catch(err) {
+							console.log('File ' + inputFile + ' was fetched locally');
 							
-								console.error(`Compressor remote execution failed!`);
-								let a = "" + err;
-								return Promise.reject(err.message);
-							}
+							// revert color back
+							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 
-							console.log('File ' + inputFile + ' was fetched');
-
-							/*await CTagSSH_VF.sftp.readFile(rndCompressedFile).then(data => {
-								
-								console.log('File ' + inputFile + ' fetched');
-							});*/
 						} catch(err) {
-							console.error(`Compressor remote execution failed!`);
 							let a = "" + err;
+							console.error(`Compressor remote execution failed: ` + a);
 							return Promise.reject(err.message);
 						}
+						
+						// remove garbage
+						try {
+							
+							await CTagSSH_VF.sftp.unlink(rndCompressedFile);
+							fs.unlinkSync(localTmpFile);
+						} catch(err) {
+							
+							let a = "" + err;
+							console.error(`Remove garbage files failed: ` + a);
+							return Promise.reject(err.message);
+						}
+
 						return Promise.resolve('');
 					})
 					.then(undefined, err => {
@@ -423,8 +433,10 @@ async function loadRemoteCTags()
 					});
 			})
 			.then(undefined, err => {
+				let a = "" + err;
+				console.error(`Can't read remote folder: ` + a);
 				return Promise.reject(err.message);
-		});
+			});
 	}
 }
 
