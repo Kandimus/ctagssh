@@ -1,7 +1,7 @@
 {
 	"name": "ctagssh",
 	"description": "CTags support via SSH",
-	"version": "1.0.2",
+	"version": "1.1.0",
 	"publisher": "Kandimus",
 	"icon": "images/icon.png",
 	"repository": "https://github.com/Kandimus/ctagsssh",
@@ -21,6 +21,10 @@
 			{
 				"command": "ctagssh.reconnect",
 				"title": "ctagssh.reconnect"
+			},
+			{
+				"command": "ctagssh.loadRemoteCTags",
+				"title": "ctagssh.loadRemoteCTags"
 			},
 			{
 				"command": "ctagssh.gotoTag",
@@ -46,6 +50,12 @@
 				"command": "ctagssh.back",
 				"key": "ctrl+shift+F12",
 				"mac": "ctrl+shift+F12",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "ctagssh.loadRemoteCTags",
+				"key": "shift+F11",
+				"mac": "shift+F11",
 				"when": "editorTextFocus"
 			}
 		],
@@ -78,15 +88,20 @@
 					"default": null,
 					"description": "user password"
 				},
-				"ctagssh.ctagsfilesfolder": {
+				"ctagssh.ctagsFilesRemotePath": {
 					"type": "string",
-					"default": null,
-					"description": "folder contains .ctag files (not impliment)"
+					"default": "",
+					"description": "Remote folder path containing possible CTags files"
+				},
+				"ctagssh.ctagsExtensions": {
+					"type": "string",
+					"default": "",
+					"description": "List of CTags file extensions used as filter for remote folder browsing"
 				},
 				"ctagssh.fileCtags": {
 					"type": "string",
 					"default": ".ctags",
-					"description": "A file containing information about CTags. This is usually a '.ctags' or '.tags' file."
+					"description": "Local CTags file. Usually it is '.ctags' or '.tags' file."
 				},
 				"ctagssh.showExtensions": {
 					"type": "string",
@@ -102,9 +117,11 @@
 		}
 	},
 	"dependencies": {
+		"fs": "^0.0.1-security",
 		"n-readlines": "^0.2.7",
 		"split": "^1.0.0",
-		"ssh2-promise": "^1.0.2"
+		"ssh2-promise": "^1.0.2",
+		"zlib": "^1.0.5"
 	},
 	"scripts": {
 		"postinstall": "node ./node_modules/vscode/bin/install"

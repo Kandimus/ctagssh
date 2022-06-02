@@ -1,6 +1,14 @@
 const vscode = require('vscode');
-var path = require('path');
+var path = require('path'), pathPosix = require('path/posix');
 var LineByLine = require('n-readlines');
+
+var zlib = require('zlib');
+var fs = require('fs');
+
+const { promisify } = require('node:util');
+const { pipeline } = require('node:stream');
+const pipe = promisify(pipeline);
+
 var sshvf = require('./TextDocumentProvider.js');
 var Settings = require('./Settings.js');
 
@@ -10,7 +18,15 @@ var CTagSSH_VF;
 var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
 var CTagSSH_Settings;
-const CTagSSHMode = Object.freeze({"NotConnected": 1, "Connecting": 2, "Connected": 3, "Download" : 4});
+
+const CTagSSHMode = Object.freeze(
+	{"NotConnected": 1, 
+	"Connecting": 2, 
+	"Connected": 3, 
+	"Download" : 4,
+	"RemoteDownload" : 5
+});
+
 const CTagSSH_PadWidth = 3;
 const CTagSSH_Padding = ' ';
 const sshfs = "sshfs";
@@ -76,6 +92,12 @@ function updateStatusBar(mode)
 			CTagSSH_StatusBar.color = "#0000EE";
 			CTagSSH_StatusBar.tooltip = "Downloading";
 			break;
+			
+		case CTagSSHMode.RemoteDownload:
+			CTagSSH_StatusBar.text = '| $(extensions-install-count) CTagSSH |';
+			CTagSSH_StatusBar.color = "#FF00FF";
+			CTagSSH_StatusBar.tooltip = "Remote downloading";
+			break;
 	}
 
 	CTagSSH_StatusBar.show();
@@ -134,7 +156,9 @@ function activate(context)
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.menu', async () => {
 		showMenu();
 	}));
-
+	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.loadRemoteCTags', () => {
+		loadRemoteCTags();
+	}));
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.test', async () => {
 		var a = 1;
 	}));
@@ -146,9 +170,7 @@ function deactivate()
 		CTagSSH_StatusBar.dispose();
 	}
 
-	if (CTagSSH_Tags !== undefined) {
-		CTagSSH_Tags = undefined;
-	}
+	freeCTags();
 }
 
 // eslint-disable-next-line no-undef
@@ -172,7 +194,7 @@ async function showMenu()
 		menuGlobal.push({label: "Set profile on SSH FS ->", id: 2});
 	}
 
-	vscode.window.showQuickPick(menuGlobal, {matchOnDescription: true, matchOnDetail: true})
+	vscode.window.showQuickPick(menuGlobal, {/* title: "DESCRIPTION", */matchOnDescription: true, matchOnDetail: true})
 		.then(val => {
 			switch(val.id) {
 				case 0:
@@ -236,14 +258,7 @@ async function connectToSSH()
 		conf.password = conf_ctagssh.password;
 	}
 
-	if (CTagSSH_Tags === undefined) {
-		const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags)
-
-		console.log(`Reading tags from: '${filename}'`);
-		loadCTags(filename).then(() => {
-			console.log("Read tags");
-		});
-	}
+	readCTags(conf_ctagssh);
 
 	CTagSSH_VF.connect(conf)
 		.then(() => {
@@ -254,6 +269,17 @@ async function connectToSSH()
 			updateStatusBar(CTagSSHMode.NotConnected);
 			return Promise.reject(err);
 		});
+}
+
+function readCTags(conf_ctagssh) {
+	
+	const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
+
+	console.log(`Reading tags from: '${filename}'`);
+	CTagSSH_Tags = undefined;
+	loadCTags(filename).then(() => {
+		console.log("Read tags");
+	});
 }
 
 function selectProfileSSHFS()
@@ -287,6 +313,150 @@ function selectProfileSSHFS()
 			return;
 		}
 	}
+}
+
+async function do_gunzip(input, output) {
+	const gunzip = zlib.createGunzip();
+	const source = fs.createReadStream(input);
+	const destination = fs.createWriteStream(output);
+	await pipe(source, gunzip, destination);
+}
+
+async function loadRemoteCTags()
+{
+	let conf = vscode.workspace.getConfiguration('ctagssh');
+
+	if ("" !== conf.ctagsFilesRemotePath && CTagSSH_VF.isConnected == true) {
+
+		await CTagSSH_VF.sftp.readdir(conf.ctagsFilesRemotePath)
+			.then(data => {
+				
+				// extract available extensions from ctagssh settings if any
+				let ctagsExtensions = [];
+				let tmpFiles = [];
+
+				if ("" !== conf.ctagsExtensions) {
+
+					ctagsExtensions = conf.ctagsExtensions.split(/[,;\s]+/)
+						.filter((/** @type {string} */ element) => element !== "")
+						.map((/** @type {string} */ element) => element.toLowerCase());
+				}
+
+				// if there are available fltering extensions then do filtering for files list
+				if (0 !== ctagsExtensions.length) {
+
+					tmpFiles = data.filter((element) => 
+						element.attrs.isFile() && ctagsExtensions.includes(path.extname(element.filename).toLowerCase().substring(1)));
+				}
+				
+				if (0 === tmpFiles.length) {
+					tmpFiles = data.filter((element) => element.attrs.isFile());
+				}
+				let ctagsFilesList = [];
+				tmpFiles.sort((a, b) => {
+					
+					const A = a.filename;
+  					const B = b.filename;
+  					
+					return A < B ? -1 : A > B ? 1 : 0;
+				})
+				.forEach((/** @type {{ attrs: { size: { toString: () => string; }; mtime: number; }; filename: any; }} */ element) => {
+
+					ctagsFilesList.push({
+						label : `${element.attrs.size.toString().padStart(10, CTagSSH_Padding)}\t${new Date(element.attrs.mtime * 1000 /*msecs*/).toISOString().replace(/T/, ' ').replace(/\..+/, '')}\t${element.filename}`,
+						filename : element.filename
+					});
+				});
+
+				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
+					.then(async val => {
+						
+						const rndCompressedFile = CTagSSH_VF.statTempFile + getRandomInt(16777216).toString(16);
+						const rndFilename = pathPosix.basename(rndCompressedFile);
+						const inputFile = pathPosix.join(conf.ctagsFilesRemotePath, val.filename);
+						const execLine = gzipExecLine(inputFile, rndCompressedFile);
+						const localTmpFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, rndFilename + '.gz');
+						const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags);
+					
+						try {
+						
+							// change color
+							updateStatusBar(CTagSSHMode.RemoteDownload);
+							
+							// compress remote ctags file with gzip
+							console.log('Gzipping remote file: ' + inputFile);
+							await CTagSSH_VF.ssh.exec(execLine);
+							console.log('Remote file ' + inputFile + ' was gzipped');
+							
+							// fetch remote gzipped ctags into local folder
+							console.log('Fetching file locally: ' + inputFile);
+							await CTagSSH_VF.sftp.fastGet(rndCompressedFile, localTmpFile);
+							
+							// decompress local gzipped ctags
+							await do_gunzip(localTmpFile, localNewCTagsFile);
+							readCTags(conf);
+							
+							console.log('File ' + inputFile + ' was fetched locally');
+							
+							// revert color back
+							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+
+						} catch(err) {
+
+							let a = "" + err;
+							let b = "";
+							try {
+								// remove possible garbage
+								await CTagSSH_VF.sftp.unlink(rndCompressedFile);
+								fs.unlinkSync(localTmpFile);
+							} catch(err1) {
+
+								b += err1;
+								console.error(`Tempfiles removing failed: ${b}`);
+							}
+							console.error(`Compressor remote execution failed: ${a}`);
+
+							// revert color back
+							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+
+							return Promise.reject(`${a} ; ${b}`);
+						}
+						
+						// remove garbage
+						try {
+							
+							await CTagSSH_VF.sftp.unlink(rndCompressedFile);
+							fs.unlinkSync(localTmpFile);
+						} catch(err) {
+							
+							let a = "" + err;
+							console.error(`Remove garbage files failed: ${a}`);
+
+							// revert color back
+							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+
+							return Promise.reject(err.message);
+						}
+
+						return Promise.resolve('');
+					})
+					.then(undefined, err => {
+						return Promise.reject(err.message);
+					});
+			})
+			.then(undefined, err => {
+				let a = "" + err;
+				console.error(`Can't read remote folder: ` + a);
+				return Promise.reject(err.message);
+			});
+	}
+}
+
+
+function gzipExecLine(inputFile, rndCompressedFile) {
+
+	//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
+	return `gzip -cfN9 ${inputFile} > ${rndCompressedFile}`;
 }
 
 /**
@@ -361,6 +531,24 @@ async function loadCTags(tagFilePath)
 	return Promise.resolve();
 }
 
+function deepcopy(aObject) {
+	 
+	let bObject = Array.isArray(aObject) ? [] : {};
+  
+	let value;
+	for (const key in aObject) {
+  
+	  // Prevent self-references to parent object
+	  // if (Object.is(aObject[key], aObject)) continue;
+	  
+	  value = aObject[key];
+  
+	  bObject[key] = (typeof value === "object") ? deepcopy(value) : value;
+	}
+  
+	return bObject;
+  }
+
 function searchTags()
 {
 	let query = getSelectedText(vscode.window.activeTextEditor);
@@ -387,7 +575,7 @@ function searchTags()
 			// extract available extensions from ctagssh settings if any
 			let conf = vscode.workspace.getConfiguration('ctagssh');
 			let filterExtensions = [];
-			let filteredFiles = [];
+			let tmpFiles = [];
 
 			if ("" !== conf.showExtensions) {
 		
@@ -399,20 +587,22 @@ function searchTags()
 			// if there are available fltering extensions then do filtering for files list
 			if (0 !== filterExtensions.length) {
 
-				filteredFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => 
+				tmpFiles = displayFiles.filter((/** @type {{ filePath: string; }} */ element) => 
 					filterExtensions.includes(path.extname(element.filePath).toLowerCase().substring(1)));
 			}
-			if (0 === filteredFiles.length) {
-				filteredFiles = displayFiles;
+			if (0 === tmpFiles.length) {
+				tmpFiles = displayFiles;
 			}
-		
+			
+			let filteredFiles = tmpFiles.map(dc => Object.assign({}, dc));
+			//let filteredFiles = deepcopy(tmpFiles);
 			// enumeration of list of matching tags
 			filteredFiles.forEach((element, index) => {
 
 				element.label = `(${(index + 1).toString().padStart(CTagSSH_PadWidth, CTagSSH_Padding)}) ${element.label}`;
 			});
 
-			vscode.window.showQuickPick(filteredFiles, {matchOnDescription: true, matchOnDetail: true})
+			vscode.window.showQuickPick(filteredFiles, {title: "Variants", matchOnDescription: true, matchOnDetail: true})
 				.then(val => {
 					navigateToDefinition(val);
 				})
