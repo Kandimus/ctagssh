@@ -184,38 +184,38 @@ module.exports = {
  */
 async function showMenu()
 {
-	let menuGlobal = [
-		{label: "Connect to host"     , id: 0},
-		{label: "Disconnect from host", id: 1}
+	let dynamicExtMenu = [
+		{label: "Connect to host"     , foo: Menu_sshConnect},
+		{label: "Disconnect from host", foo: Menu_sshDisconnect}
 	];
-	let conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
+
+	let conf = vscode.workspace.getConfiguration('ctagssh');
 	
-	if (conf_ctagssh.usingSSHFS == true) {
-		menuGlobal.push({label: "Set profile on SSH FS ->", id: 2});
+	if (conf.usingSSHFS == true) {
+		dynamicExtMenu.push({label: "Set profile on SSH FS ->", foo: Menu_slectSSHfsProfile});
+	}
+	if ("" !== conf.ctagsFilesRemotePath && CTagSSH_VF.isConnected == true) {
+		dynamicExtMenu.push({label: "Load CTags file using remote SSH connection", foo: loadRemoteCTags});
 	}
 
-	vscode.window.showQuickPick(menuGlobal, {/* title: "DESCRIPTION", */matchOnDescription: true, matchOnDetail: true})
-		.then(val => {
-			switch(val.id) {
-				case 0:
-					if (!CTagSSH_VF.isConnected) {
-						connectToSSH();
-					};
-					break;
+	vscode.window.showQuickPick(
+		dynamicExtMenu, 
+		{title: "Global extension menu", matchOnDescription: true, matchOnDetail: true})
+			.then(val => val.foo())
+			.then(undefined, err => {
+				;
+			});
+}
 
-				case 1:
-					CTagSSH_VF.disconnect();
-					updateStatusBar(CTagSSHMode.NotConnected);
-					break;
+function Menu_sshDisconnect() {
+	CTagSSH_VF.disconnect();
+	updateStatusBar(CTagSSHMode.NotConnected);
+}
 
-				case 2:
-					selectProfileSSHFS();
-					break;
-			}
-		})
-		.then(undefined, err => {
-			;
-		});
+function Menu_sshConnect() {
+	if (!CTagSSH_VF.isConnected) {
+		connectToSSH();
+	};
 }
 
 /**
@@ -282,7 +282,7 @@ function readCTags(conf_ctagssh) {
 	});
 }
 
-function selectProfileSSHFS()
+function Menu_slectSSHfsProfile()
 {
 	const conf_sshfs = vscode.workspace.getConfiguration(sshfs);
 
