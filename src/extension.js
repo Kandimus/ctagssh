@@ -409,9 +409,24 @@ async function loadRemoteCTags()
 							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 
 						} catch(err) {
+
 							let a = "" + err;
-							console.error(`Compressor remote execution failed: ` + a);
-							return Promise.reject(err.message);
+							let b = "";
+							try {
+								// remove possible garbage
+								await CTagSSH_VF.sftp.unlink(rndCompressedFile);
+								fs.unlinkSync(localTmpFile);
+							} catch(err1) {
+
+								b += err1;
+								console.error(`Tempfiles removing failed: ${b}`);
+							}
+							console.error(`Compressor remote execution failed: ${a}`);
+
+							// revert color back
+							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+
+							return Promise.reject(`${a} ; ${b}`);
 						}
 						
 						// remove garbage
@@ -422,7 +437,11 @@ async function loadRemoteCTags()
 						} catch(err) {
 							
 							let a = "" + err;
-							console.error(`Remove garbage files failed: ` + a);
+							console.error(`Remove garbage files failed: ${a}`);
+
+							// revert color back
+							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+
 							return Promise.reject(err.message);
 						}
 
