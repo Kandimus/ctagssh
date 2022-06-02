@@ -1,7 +1,7 @@
 {
 	"name": "ctagssh",
 	"description": "CTags support via SSH",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"publisher": "Kandimus",
 	"icon": "images/icon.png",
 	"repository": "https://github.com/Kandimus/ctagsssh",
