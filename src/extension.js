@@ -718,6 +718,7 @@ async function moveToBack()
 	if (element.fileUri.scheme == ctagsshvf) {
 		updateStatusBar(CTagSSHMode.Download);
 		await CTagSSH_VF.preload_file(element.fileUri);
+		updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 	}
 
 	const conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
