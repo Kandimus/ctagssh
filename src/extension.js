@@ -179,12 +179,6 @@ module.exports = {
 	deactivate
 }
 
-function freeCTags() {
-	if (CTagSSH_Tags !== undefined) {
-		CTagSSH_Tags = undefined;
-	}
-}
-
 /**
  * @brief Show externsion's quick menu
  */
@@ -278,14 +272,14 @@ async function connectToSSH()
 }
 
 function readCTags(conf_ctagssh) {
-	if (CTagSSH_Tags === undefined) {
-		const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
+	
+	const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
 
-		console.log(`Reading tags from: '${filename}'`);
-		loadCTags(filename).then(() => {
-			console.log("Read tags");
-		});
-	}
+	console.log(`Reading tags from: '${filename}'`);
+	CTagSSH_Tags = undefined;
+	loadCTags(filename).then(() => {
+		console.log("Read tags");
+	});
 }
 
 function selectProfileSSHFS()
@@ -400,7 +394,6 @@ async function loadRemoteCTags()
 							
 							// decompress local gzipped ctags
 							await do_gunzip(localTmpFile, localNewCTagsFile);
-							freeCTags();
 							readCTags(conf);
 							
 							console.log('File ' + inputFile + ' was fetched locally');
