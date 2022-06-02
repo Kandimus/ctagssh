@@ -189,12 +189,14 @@ async function showMenu()
 		{label: "Disconnect from host", foo: Menu_sshDisconnect}
 	];
 
-	let conf_ctagssh = vscode.workspace.getConfiguration('ctagssh');
+	let conf = vscode.workspace.getConfiguration('ctagssh');
 	
-	if (conf_ctagssh.usingSSHFS == true) {
+	if (conf.usingSSHFS == true) {
 		dynamicExtMenu.push({label: "Set profile on SSH FS ->", foo: Menu_slectSSHfsProfile});
 	}
-	dynamicExtMenu.push({label: "Load CTags file using remote SSH connection", foo: loadRemoteCTags});
+	if ("" !== conf.ctagsFilesRemotePath && CTagSSH_VF.isConnected == true) {
+		dynamicExtMenu.push({label: "Load CTags file using remote SSH connection", foo: loadRemoteCTags});
+	}
 
 	vscode.window.showQuickPick(
 		dynamicExtMenu, 
