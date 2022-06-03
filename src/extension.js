@@ -322,6 +322,19 @@ async function do_gunzip(input, output) {
 	await pipe(source, gunzip, destination);
 }
 
+function nBytes(x){
+	
+	const units = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+	let l = 0, n = parseInt(x, 10) || 0;
+	
+	while (n >= 1000) {
+		++l;
+		n /= 1000;
+	}
+	  
+	return n.toFixed(l > 0 ? 2 : 0) + ' ' + units[l];
+}
+
 async function loadRemoteCTags()
 {
 	let conf = vscode.workspace.getConfiguration('ctagssh');
@@ -363,7 +376,7 @@ async function loadRemoteCTags()
 				.forEach((/** @type {{ attrs: { size: { toString: () => string; }; mtime: number; }; filename: any; }} */ element) => {
 
 					ctagsFilesList.push({
-						label : `${element.attrs.size.toString().padStart(10, CTagSSH_Padding)}\t${new Date(element.attrs.mtime * 1000 /*msecs*/).toISOString().replace(/T/, ' ').replace(/\..+/, '')}\t${element.filename}`,
+						label : `${nBytes(element.attrs.size).padEnd(10, CTagSSH_Padding)}\t${new Date(element.attrs.mtime * 1000 /*msecs*/).toISOString().replace(/T/, ' ').replace(/\..+/, '')}\t${element.filename}`,
 						filename : element.filename
 					});
 				});
@@ -470,7 +483,7 @@ async function loadCTags(tagFilePath)
 		var liner = new LineByLine(tagFilePath);
 	}
 	catch(err) {
-		vscode.window.showErrorMessage("Can not load file '.ctags'");
+		vscode.window.showErrorMessage("Can't load CTags file ${tagFilePath5}");
 		return Promise.reject();
 	}
 
