@@ -60,19 +60,16 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 		}
 
+		/**
+		 * @param {string} remoteExecLine
+		 */
 		async exec(remoteExecLine) 
 		{
 			if (this.isConnected == true) {
-				try {
 
-					await this.ssh.exec(remoteExecLine);
-				} catch(err) {
-
-					console.error(err);
-					return Promise.reject(err);
-				}
-				return Promise.resolve('');
+				await this.ssh.exec(remoteExecLine);
 			} else {
+
 				throw vscode.FileSystemError.Unavailable("Can't exec into remote host since it is disconnected");
 			} 
 		}
@@ -102,7 +99,7 @@ var CTagSSHVF = /** @class */ (function ()
 
 			if (!this.getStatIsWork) {
 				try {
-					await this.ssh.exec(`stat ${filepath} | grep "Modify" > ${this.statTempFile}`);
+					await this.exec(`stat ${filepath} | grep "Modify" > ${this.statTempFile}`);
 					await this.sftp.readFile(`${this.statTempFile}`)
 						.then(data => {
 							let str_date = String(data)
