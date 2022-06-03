@@ -324,7 +324,7 @@ async function do_gunzip(input, output) {
 
 function nBytes(x){
 	
-	const units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+	const units = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 	let l = 0, n = parseInt(x, 10) || 0;
 	
 	while (n >= 1000) {
@@ -483,7 +483,7 @@ async function loadCTags(tagFilePath)
 		var liner = new LineByLine(tagFilePath);
 	}
 	catch(err) {
-		vscode.window.showErrorMessage("Can't load CTags file");
+		vscode.window.showErrorMessage("Can't load CTags file ${tagFilePath5}");
 		return Promise.reject();
 	}
 
