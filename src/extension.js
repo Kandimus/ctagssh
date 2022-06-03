@@ -162,9 +162,6 @@ function activate(context)
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.loadRemoteCTags', () => {
 		loadRemoteCTags();
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.test', async () => {
-		var a = 1;
-	}));
 }
 
 function deactivate()
