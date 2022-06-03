@@ -60,6 +60,23 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 		}
 
+		async exec(remoteExecLine) 
+		{
+			if (this.isConnected == true) {
+				try {
+
+					await this.ssh.exec(remoteExecLine);
+				} catch(err) {
+
+					console.error(err);
+					return Promise.reject(err);
+				}
+				return Promise.resolve('');
+			} else {
+				throw vscode.FileSystemError.Unavailable("Can't exec into remote host since it is disconnected");
+			} 
+		}
+
 		/**
 		 * @param {{ path: string; }} uri
 		 */

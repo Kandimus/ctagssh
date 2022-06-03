@@ -398,7 +398,7 @@ async function loadRemoteCTags()
 							
 							// compress remote ctags file with gzip
 							console.log('Gzipping remote file: ' + inputFile);
-							await CTagSSH_VF.ssh.exec(execLine);
+							await CTagSSH_VF.exec(execLine);
 							console.log('Remote file ' + inputFile + ' was gzipped');
 							
 							// fetch remote gzipped ctags into local folder
