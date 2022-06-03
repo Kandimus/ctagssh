@@ -341,7 +341,7 @@ async function loadRemoteCTags()
 
 	if ("" !== conf.ctagsFilesRemotePath && CTagSSH_VF.isConnected == true) {
 
-		await CTagSSH_VF.sftp.readdir(conf.ctagsFilesRemotePath)
+		await CTagSSH_VF.remoteReaddir(conf.ctagsFilesRemotePath)
 			.then(data => {
 				
 				// extract available extensions from ctagssh settings if any
@@ -398,12 +398,12 @@ async function loadRemoteCTags()
 							
 							// compress remote ctags file with gzip
 							console.log('Gzipping remote file: ' + inputFile);
-							await CTagSSH_VF.exec(execLine);
+							await CTagSSH_VF.remoteExec(execLine);
 							console.log('Remote file ' + inputFile + ' was gzipped');
 							
 							// fetch remote gzipped ctags into local folder
 							console.log('Fetching file locally: ' + inputFile);
-							await CTagSSH_VF.sftp.fastGet(rndCompressedFile, localTmpFile);
+							await CTagSSH_VF.remoteFastGet(rndCompressedFile, localTmpFile);
 							
 							// decompress local gzipped ctags
 							await do_gunzip(localTmpFile, localNewCTagsFile);
@@ -420,7 +420,7 @@ async function loadRemoteCTags()
 							let b = "";
 							try {
 								// remove possible garbage
-								await CTagSSH_VF.sftp.unlink(rndCompressedFile);
+								await CTagSSH_VF.remoteUnlink(rndCompressedFile);
 								fs.unlinkSync(localTmpFile);
 							} catch(err1) {
 
@@ -438,7 +438,7 @@ async function loadRemoteCTags()
 						// remove garbage
 						try {
 							
-							await CTagSSH_VF.sftp.unlink(rndCompressedFile);
+							await CTagSSH_VF.remoteUnlink(rndCompressedFile);
 							fs.unlinkSync(localTmpFile);
 						} catch(err) {
 							

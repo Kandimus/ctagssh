@@ -63,15 +63,62 @@ var CTagSSHVF = /** @class */ (function ()
 		/**
 		 * @param {string} remoteExecLine
 		 */
-		async exec(remoteExecLine) 
+		// execute over ssh wrapper method
+		async remoteExec(remoteExecLine) 
 		{
 			if (this.isConnected == true) {
 
-				await this.ssh.exec(remoteExecLine);
+				return await this.ssh.exec(remoteExecLine);
 			} else {
 
 				throw vscode.FileSystemError.Unavailable("Can't exec into remote host since it is disconnected");
 			} 
+		}
+
+		/**
+		 * @param {string | Buffer} remoteDirectory
+		 */
+		// readdir over sftp wrapper method
+		async remoteReaddir(remoteDirectory) 
+		{
+			if (this.isConnected == true) {
+
+				return await this.sftp.readdir(remoteDirectory);
+			} else {
+
+				throw vscode.FileSystemError.Unavailable("Can't read directory into remote host since it is disconnected");
+			}
+		}
+
+		/**
+		 * @param {string} remoteFile
+		 */
+		// unlink (erase) file over sftp wrapper method
+		async remoteUnlink(remoteFile)
+		{
+			if (this.isConnected == true) {
+
+				return await this.sftp.unlink(remoteFile);
+			} else {
+
+				throw vscode.FileSystemError.Unavailable("Can't unlink file into remote host since it is disconnected");
+			}
+		}
+
+		/**
+		 * @param {string} remoteFile
+		 * @param {string} localFile
+		 */
+		// fast download file over sftp wrapper method
+		async remoteFastGet(remoteFile, localFile) 
+		{
+			if (this.isConnected == true) {
+
+				return await this.sftp.fastGet(remoteFile, localFile);
+			} else {
+
+				throw vscode.FileSystemError.Unavailable("Can't download file from remote host since it is disconnected");
+			}
 		}
 
 		/**
@@ -99,7 +146,7 @@ var CTagSSHVF = /** @class */ (function ()
 
 			if (!this.getStatIsWork) {
 				try {
-					await this.exec(`stat ${filepath} | grep "Modify" > ${this.statTempFile}`);
+					await this.remoteExec(`stat ${filepath} | grep "Modify" > ${this.statTempFile}`);
 					await this.sftp.readFile(`${this.statTempFile}`)
 						.then(data => {
 							let str_date = String(data)
