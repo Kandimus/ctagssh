@@ -1,12 +1,12 @@
 const vscode = require('vscode');
-var path = require('path'), pathPosix = require('path/posix');
-var LineByLine = require('n-readlines');
+const path = require('path');
+const pathPosix = require('path-posix');
+const LineByLine = require('n-readlines');
+const zlib = require('zlib');
+const fs = require('fs');
 
-var zlib = require('zlib');
-var fs = require('fs');
-
-const { promisify } = require('node:util');
-const { pipeline } = require('node:stream');
+const { promisify } = require('util');
+const { pipeline } = require('stream');
 const pipe = promisify(pipeline);
 
 var sshvf = require('./TextDocumentProvider.js');
@@ -19,20 +19,23 @@ var CTagSSH_Init = false;
 var CTagSSH_StatusBar;
 var CTagSSH_Settings;
 
-const CTagSSHMode = Object.freeze(
-	{"NotConnected": 1, 
-	"Connecting": 2, 
-	"Connected": 3, 
-	"Download" : 4,
+const CTagSSHMode = Object.freeze({
+	"NotConnected"   : 1,
+	"Connecting"     : 2,
+	"Connected"      : 3,
+	"Download"       : 4,
 	"RemoteDownload" : 5
 });
+
+const collapsePathMode = Object.freeze({
+	"left"  : 1,
+	"center": 2,
+	"right" : 3});
 
 const CTagSSH_PadWidth = 3;
 const CTagSSH_Padding = ' ';
 const sshfs = "sshfs";
 const ctagsshvf = "ctagsshvf";
-
-const collapsePathMode = Object.freeze({"left": 1, "center": 2, "right": 3});
 
 /**
  * @param {string} path
@@ -159,9 +162,6 @@ function activate(context)
 	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.loadRemoteCTags', () => {
 		loadRemoteCTags();
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('ctagssh.test', async () => {
-		var a = 1;
-	}));
 }
 
 function deactivate()
@@ -170,7 +170,7 @@ function deactivate()
 		CTagSSH_StatusBar.dispose();
 	}
 
-	freeCTags();
+	CTagSSH_Tags = undefined;
 }
 
 // eslint-disable-next-line no-undef
@@ -518,6 +518,7 @@ async function loadCTags(tagFilePath)
 		const delim = '  ->  ';
 		let maxlen = (80-(CTagSSH_PadWidth-1)) - (tagName.length + delim.length);
 		CTagSSH_Tags.push({
+			// @ts-ignore
 			label: tagName + delim + collapsePath(fileName, maxlen, collapsePathMode.left),
 			tagName: tagName,
 			filePath: fileName,

@@ -1,7 +1,7 @@
 {
 	"name": "ctagssh",
 	"description": "CTags support via SSH",
-	"version": "1.1.1",
+	"version": "1.2.0",
 	"publisher": "Kandimus",
 	"icon": "images/icon.png",
 	"repository": "https://github.com/Kandimus/ctagsssh",
@@ -95,7 +95,7 @@
 				},
 				"ctagssh.ctagsExtensions": {
 					"type": "string",
-					"default": "",
+					"default": "ctags",
 					"description": "List of CTags file extensions used as filter for remote folder browsing"
 				},
 				"ctagssh.fileCtags": {
@@ -119,8 +119,11 @@
 	"dependencies": {
 		"fs": "^0.0.1-security",
 		"n-readlines": "^0.2.7",
+		"path-posix": "^1.0.0",
 		"split": "^1.0.0",
 		"ssh2-promise": "^1.0.2",
+		"stream": "^0.0.2",
+		"util": "^0.12.4",
 		"zlib": "^1.0.5"
 	},
 	"scripts": {
