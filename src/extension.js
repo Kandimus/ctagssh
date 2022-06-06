@@ -11,6 +11,7 @@ const pipe = promisify(pipeline);
 
 var sshvf = require('./TextDocumentProvider.js');
 var Settings = require('./Settings.js');
+const { isUndefined } = require('util');
 
 var CTagSSH_Tags = undefined;
 var CTagSSH_History = [];
@@ -258,7 +259,7 @@ async function connectToSSH()
 		conf.password = conf_ctagssh.password;
 	}
 
-	readCTags(conf_ctagssh);
+	readCTags(path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags));
 
 	CTagSSH_VF.connect(conf)
 		.then(() => {
@@ -271,9 +272,9 @@ async function connectToSSH()
 		});
 }
 
-function readCTags(conf_ctagssh) {
+function readCTags(filename) {
 	
-	const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
+	//const filename = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf_ctagssh.fileCtags);
 
 	console.log(`Reading tags from: '${filename}'`);
 	CTagSSH_Tags = undefined;
@@ -387,71 +388,26 @@ async function loadRemoteCTags()
 						const rndCompressedFile = CTagSSH_VF.statTempFile + getRandomInt(16777216).toString(16);
 						const rndFilename = pathPosix.basename(rndCompressedFile);
 						const inputFile = pathPosix.join(conf.ctagsFilesRemotePath, val.filename);
-						const execLine = gzipExecLine(inputFile, rndCompressedFile);
+						const compressExecLine = gzipExecLine(inputFile, rndCompressedFile);
 						const localTmpFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, rndFilename + '.gz');
 						const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags);
-					
-						try {
 						
-							// change color
-							updateStatusBar(CTagSSHMode.RemoteDownload);
-							
-							// compress remote ctags file with gzip
-							console.log('Gzipping remote file: ' + inputFile);
-							await CTagSSH_VF.remoteExec(execLine);
-							console.log('Remote file ' + inputFile + ' was gzipped');
-							
-							// fetch remote gzipped ctags into local folder
-							console.log('Fetching file locally: ' + inputFile);
-							await CTagSSH_VF.remoteFastGet(rndCompressedFile, localTmpFile);
-							
-							// decompress local gzipped ctags
-							await do_gunzip(localTmpFile, localNewCTagsFile);
-							readCTags(conf);
-							
-							console.log('File ' + inputFile + ' was fetched locally');
-							
-							// revert color back
-							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+						// change color
+						updateStatusBar(CTagSSHMode.RemoteDownload);
 
-						} catch(err) {
+						let p = await CTagSSH_VF.downloadRemoteFile(
+							inputFile, 
+							rndCompressedFile,
+							localTmpFile,
+							localNewCTagsFile,
+							compressExecLine, 
+							do_gunzip, 
+							readCTags 
+						);
 
-							let a = "" + err;
-							let b = "";
-							try {
-								// remove possible garbage
-								await CTagSSH_VF.remoteUnlink(rndCompressedFile);
-								fs.unlinkSync(localTmpFile);
-							} catch(err1) {
-
-								b += err1;
-								console.error(`Tempfiles removing failed: ${b}`);
-							}
-							console.error(`Compressor remote execution failed: ${a}`);
-
-							// revert color back
-							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
-
-							return Promise.reject(`${a} ; ${b}`);
-						}
-						
-						// remove garbage
-						try {
-							
-							await CTagSSH_VF.remoteUnlink(rndCompressedFile);
-							fs.unlinkSync(localTmpFile);
-						} catch(err) {
-							
-							let a = "" + err;
-							console.error(`Remove garbage files failed: ${a}`);
-
-							// revert color back
-							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
-
-							return Promise.reject(err.message);
-						}
-
-						return Promise.resolve('');
+						// revert color back
+						updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+						return p;
 					})
 					.then(undefined, err => {
 						return Promise.reject(err.message);

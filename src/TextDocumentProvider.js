@@ -2,6 +2,7 @@
 
 var vscode = require("vscode");
 const sshClient = require("ssh2-promise");
+const fs = require('fs');
 
 /**
  * @bref A class inherited from TextDocumentContentProvider. The main task is to read a file from a remote server.
@@ -60,19 +61,70 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 		}
 
-		/**
-		 * @param {string} remoteExecLine
-		 */
-		// execute over ssh wrapper method
-		async remoteExec(remoteExecLine) 
+		async downloadRemoteFile(
+			inputFile, 
+			rndCompressedFile, 
+			localTmpFile, 
+			localNewCTagsFile, 
+			compressExecLine,
+			decompressFoo,
+			readCTagsFoo)
 		{
-			if (this.isConnected == true) {
 
-				return await this.ssh.exec(remoteExecLine);
-			} else {
+			if (inputFile === "" || rndCompressedFile === "" || localTmpFile == ""
+			|| localNewCTagsFile === "" || compressExecLine === "" || decompressFoo === undefined
+			|| readCTagsFoo === undefined) {
 
-				throw vscode.FileSystemError.Unavailable("Can't exec into remote host since it is disconnected");
-			} 
+				return Promise.reject(`Bad ::downloadRemoteFile arguments`);
+			}
+
+			let p = undefined;
+			try {
+				// compress remote ctags file with gzip
+				console.log('Gzipping remote file: ' + inputFile);
+				await this.ssh.exec(compressExecLine);
+				console.log('Remote file ' + inputFile + ' was gzipped');
+				
+				// fetch remote gzipped ctags into local folder
+				console.log('Fetching file locally: ' + inputFile);
+				await this.sftp.fastGet(rndCompressedFile, localTmpFile);
+				
+				// decompress local gzipped ctags
+				await decompressFoo(localTmpFile, localNewCTagsFile);
+				readCTagsFoo(localNewCTagsFile);
+				
+				console.log('File ' + inputFile + ' was fetched locally');
+			} catch(err) {
+				let a = "" + err;
+				let b = "";
+				try {
+					// remove possible garbage
+					await this.sftp.unlink(rndCompressedFile);
+					fs.unlinkSync(localTmpFile);
+				} catch(err1) {
+
+					b += err1;
+					console.error(`Tempfiles removing failed: ${b}`);
+				}
+				console.error(`Compressor remote execution failed: ${a}`);
+
+				// revert color back
+				p = Promise.reject(`${a} ; ${b}`);
+			}
+
+			if (undefined === p) {						
+				// remove garbage
+				try {
+					await this.sftp.unlink(rndCompressedFile);
+					fs.unlinkSync(localTmpFile);
+				} catch(err) {
+					let a = "" + err;
+					console.error(`Remove garbage files failed: ${a}`);
+
+					p = Promise.reject(err.message);
+				}
+			}
+			return p !== undefined ? p : Promise.resolve('');
 		}
 
 		/**
@@ -87,37 +139,6 @@ var CTagSSHVF = /** @class */ (function ()
 			} else {
 
 				throw vscode.FileSystemError.Unavailable("Can't read directory into remote host since it is disconnected");
-			}
-		}
-
-		/**
-		 * @param {string} remoteFile
-		 */
-		// unlink (erase) file over sftp wrapper method
-		async remoteUnlink(remoteFile)
-		{
-			if (this.isConnected == true) {
-
-				return await this.sftp.unlink(remoteFile);
-			} else {
-
-				throw vscode.FileSystemError.Unavailable("Can't unlink file into remote host since it is disconnected");
-			}
-		}
-
-		/**
-		 * @param {string} remoteFile
-		 * @param {string} localFile
-		 */
-		// fast download file over sftp wrapper method
-		async remoteFastGet(remoteFile, localFile) 
-		{
-			if (this.isConnected == true) {
-
-				return await this.sftp.fastGet(remoteFile, localFile);
-			} else {
-
-				throw vscode.FileSystemError.Unavailable("Can't download file from remote host since it is disconnected");
 			}
 		}
 
