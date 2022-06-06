@@ -2,7 +2,46 @@
 
 var vscode = require("vscode");
 const sshClient = require("ssh2-promise");
+
+const zlib = require('zlib');
 const fs = require('fs');
+const { promisify } = require('util');
+const { pipeline } = require('stream');
+const pipe = promisify(pipeline);
+
+const path = require('path');
+const pathPosix = require('path-posix');
+
+
+/**
+ * @param {number} max
+ * 
+ * @return random number [0, max)
+ */
+ function getRandomInt(max) {
+	return Math.floor(Math.random() * max);
+ }
+
+ /**
+ * @param {any} input
+ * @param {string} output
+ */
+ function gzipExecLine(input, output) {
+
+	//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
+	return `gzip -cfN9 ${input} > ${output}`;
+}
+
+/**
+ * @param {fs.PathLike} input
+ * @param {fs.PathLike} output
+ */
+async function do_gunzip(input, output) {
+	const gunzip = zlib.createGunzip();
+	const source = fs.createReadStream(input);
+	const destination = fs.createWriteStream(output);
+	await pipe(source, gunzip, destination);
+}
 
 /**
  * @bref A class inherited from TextDocumentContentProvider. The main task is to read a file from a remote server.
@@ -61,22 +100,25 @@ var CTagSSHVF = /** @class */ (function ()
 			}
 		}
 
+		/**
+		 * @param {string} inputFile
+		 * @param {string} localFolder
+		 */
 		async downloadRemoteFile(
 			inputFile, 
-			rndCompressedFile, 
-			localTmpFile, 
-			localNewCTagsFile, 
-			compressExecLine,
-			decompressFoo,
-			readCTagsFoo)
+			localFolder)
 		{
 
-			if (inputFile === "" || rndCompressedFile === "" || localTmpFile == ""
-			|| localNewCTagsFile === "" || compressExecLine === "" || decompressFoo === undefined
-			|| readCTagsFoo === undefined) {
+			if (inputFile === "" || localFolder == "") {
 
 				return Promise.reject(`Bad ::downloadRemoteFile arguments`);
 			}
+
+			const rndCompressedFile = this.statTempFile + getRandomInt(16777216).toString(16);
+			const rndFilename = pathPosix.basename(rndCompressedFile);
+			const compressExecLine = gzipExecLine(inputFile, rndCompressedFile);
+			const localTmpFile = path.join(localFolder, rndFilename + '.gz');
+			const localNewCTags = path.join(localFolder, rndFilename);
 
 			let p = undefined;
 			try {
@@ -90,8 +132,8 @@ var CTagSSHVF = /** @class */ (function ()
 				await this.sftp.fastGet(rndCompressedFile, localTmpFile);
 				
 				// decompress local gzipped ctags
-				await decompressFoo(localTmpFile, localNewCTagsFile);
-				readCTagsFoo(localNewCTagsFile);
+				await do_gunzip(localTmpFile, localNewCTags);
+				//readCTagsFoo(localNewCTagsFile);
 				
 				console.log('File ' + inputFile + ' was fetched locally');
 			} catch(err) {
@@ -124,7 +166,7 @@ var CTagSSHVF = /** @class */ (function ()
 					p = Promise.reject(err.message);
 				}
 			}
-			return p !== undefined ? p : Promise.resolve('');
+			return p !== undefined ? p : Promise.resolve(localNewCTags);
 		}
 
 		/**
@@ -219,3 +261,4 @@ var CTagSSHVF = /** @class */ (function ()
 }());
 
 exports.CTagSSHVF = CTagSSHVF;
+exports.getRandomInt = getRandomInt;
