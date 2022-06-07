@@ -2,12 +2,7 @@ const vscode = require('vscode');
 const path = require('path');
 const pathPosix = require('path-posix');
 const LineByLine = require('n-readlines');
-const zlib = require('zlib');
 const fs = require('fs');
-
-const { promisify } = require('util');
-const { pipeline } = require('stream');
-const pipe = promisify(pipeline);
 
 var sshvf = require('./TextDocumentProvider.js');
 var Settings = require('./Settings.js');
@@ -188,7 +183,7 @@ async function showMenu()
 	if (conf.usingSSHFS == true) {
 		dynamicExtMenu.push({label: "Set profile on SSH FS ->", foo: Menu_slectSSHfsProfile});
 	}
-	if ("" !== conf.ctagsFilesRemotePath && CTagSSH_VF.isConnected == true) {
+	if ("" !== conf.ctagsFilesRemotePath && true == CTagSSH_VF.isConnected) {
 		dynamicExtMenu.push({label: "Load CTags file using remote SSH connection", foo: loadRemoteCTags});
 	}
 
@@ -371,7 +366,6 @@ async function loadRemoteCTags()
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(async val => {
 						
-						//const inputFile = pathPosix.join(conf.ctagsFilesRemotePath, val.filename);
 						const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags);
 						
 						// change color
@@ -498,13 +492,9 @@ function deepcopy(aObject) {
   
 	let value;
 	for (const key in aObject) {
-  
-	  // Prevent self-references to parent object
-	  // if (Object.is(aObject[key], aObject)) continue;
 	  
 	  value = aObject[key];
-  
-	  bObject[key] = (typeof value === "object") ? deepcopy(value) : value;
+  	  bObject[key] = (typeof value === "object") ? deepcopy(value) : value;
 	}
   
 	return bObject;
