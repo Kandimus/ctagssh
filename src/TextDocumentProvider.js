@@ -7,28 +7,18 @@ const zlib = require('zlib');
 const fs = require('fs');
 const { promisify } = require('util');
 const { pipeline } = require('stream');
-const pipe = promisify(pipeline);
 
 const path = require('path');
 const pathPosix = require('path-posix');
 
-
-/**
- * @param {number} max
- * 
- * @return random number [0, max)
- */
- function getRandomInt(max) {
-	return Math.floor(Math.random() * max);
- }
+var Utils = require('./utils.js');
 
  /**
- * @param {any} input
+ * @param {string} input
  * @param {string} output
  */
- function gzipExecLine(input, output) {
-
-	//gzip -cfN9 INPUT_FILE > ~/OUTPUT_FILE
+function gzipExecLine(input, output)
+{
 	return `gzip -cfN9 ${input} > ${output}`;
 }
 
@@ -37,9 +27,11 @@ const pathPosix = require('path-posix');
  * @param {fs.PathLike} output
  */
 async function do_gunzip(input, output) {
+	const pipe = promisify(pipeline);
 	const gunzip = zlib.createGunzip();
 	const source = fs.createReadStream(input);
 	const destination = fs.createWriteStream(output);
+
 	await pipe(source, gunzip, destination);
 }
 
@@ -104,23 +96,19 @@ var CTagSSHVF = /** @class */ (function ()
 		 * @param {string} inputFile
 		 * @param {string} localFolder
 		 */
-		async downloadRemoteFile(
-			inputFile, 
-			localFolder)
+		async downloadRemoteFile(inputFile, localFolder)
 		{
-
 			if (inputFile === "" || localFolder == "") {
-
 				return Promise.reject(`Bad ::downloadRemoteFile arguments`);
 			}
 
-			const rndCompressedFile = this.statTempFile + getRandomInt(16777216).toString(16);
+			const rndCompressedFile = this.statTempFile + Utils.getRandomInt().toString(16);
 			const rndFilename = pathPosix.basename(rndCompressedFile);
 			const compressExecLine = gzipExecLine(inputFile, rndCompressedFile);
 			const localTmpFile = path.join(localFolder, rndFilename + '.gz');
 			const localNewCTags = path.join(localFolder, rndFilename);
-
 			let p = undefined;
+
 			try {
 				// compress remote ctags file with gzip
 				console.log('Gzipping remote file: ' + inputFile);
@@ -154,7 +142,7 @@ var CTagSSHVF = /** @class */ (function ()
 				p = Promise.reject(`${a} ; ${b}`);
 			}
 
-			if (undefined === p) {						
+			if (undefined === p) {
 				// remove garbage
 				try {
 					await this.sftp.unlink(rndCompressedFile);
@@ -170,16 +158,14 @@ var CTagSSHVF = /** @class */ (function ()
 		}
 
 		/**
+		 * @bref readdir over sftp wrapper method
 		 * @param {string | Buffer} remoteDirectory
 		 */
-		// readdir over sftp wrapper method
 		async remoteReaddir(remoteDirectory) 
 		{
 			if (this.isConnected == true) {
-
 				return await this.sftp.readdir(remoteDirectory);
 			} else {
-
 				throw vscode.FileSystemError.Unavailable("Can't read directory into remote host since it is disconnected");
 			}
 		}
@@ -200,16 +186,14 @@ var CTagSSHVF = /** @class */ (function ()
 				try {
 					let attr = await this.sftp.getStat(filepath);
 					mtime = attr.mtime;
-					//console.log(`sftp.getStat(${filepath}).mtime = ${mtime}`);
 				} catch(err){
-					//console.error(`sftp.getStat(${filepath}) is fault`);
 					this.getStatIsWork = false;
 				}
 			}
 
 			if (!this.getStatIsWork) {
 				try {
-					await this.remoteExec(`stat ${filepath} | grep "Modify" > ${this.statTempFile}`);
+					await this.ssh.exec(`stat ${filepath} | grep "Modify" > ${this.statTempFile}`);
 					await this.sftp.readFile(`${this.statTempFile}`)
 						.then(data => {
 							let str_date = String(data)
@@ -261,4 +245,3 @@ var CTagSSHVF = /** @class */ (function ()
 }());
 
 exports.CTagSSHVF = CTagSSHVF;
-exports.getRandomInt = getRandomInt;
