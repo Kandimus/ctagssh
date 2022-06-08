@@ -161,10 +161,8 @@ async function showMenu()
 	}
 
 	vscode.window.showQuickPick(dynamicExtMenu, { title: "Global extension menu", matchOnDescription: true, matchOnDetail: true })
-		.then(val => val.foo())
-		.then(undefined, err => {
-			;
-		});
+		.then(val => { if (val) val.foo(); })
+		.then(undefined, err => {});
 }
 
 function Menu_slectSSHfsProfile()
@@ -183,16 +181,16 @@ function Menu_slectSSHfsProfile()
 
 			vscode.window.showQuickPick(profileList, {matchOnDescription: true, matchOnDetail: true})
 				.then(val => {
-					if (!('sshfs' in CTagSSH_Settings.get())) {
-						CTagSSH_Settings.get().sshfs = {};
+					if (val) {
+						if (!('sshfs' in CTagSSH_Settings.get())) {
+							CTagSSH_Settings.get().sshfs = {};
+						}
+						CTagSSH_Settings.get().sshfs.profile = val.label;
+						CTagSSH_Settings.save();
+						connectToSSH();
 					}
-					CTagSSH_Settings.get().sshfs.profile = val.label;
-					CTagSSH_Settings.save();
-					connectToSSH();
 				})
-				.then(undefined, err => {
-					;
-				});
+				.then(undefined, err => {});
 		} else {
 			vscode.window.showErrorMessage("Not found profile of SSH FS extension!");
 			return;
@@ -301,8 +299,7 @@ async function loadRemoteCTags()
 
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(async val => {
-						
-						if (undefined !== val) {
+						if (val) {
 
 							const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags);
 						
@@ -310,7 +307,7 @@ async function loadRemoteCTags()
 							updateStatusBar(CTagSSHMode.RemoteDownload);
 
 							CTagSSH_VF.downloadRemoteFile(
-								pathPosix.join(conf.ctagsFilesRemotePath, val.filename), 
+								pathPosix.join(conf.ctagsFilesRemotePath, val.filename),
 								vscode.workspace.workspaceFolders[0].uri.fsPath)
 							.then(filename => {
 								try {
@@ -488,12 +485,8 @@ function searchTags()
 			});
 
 			vscode.window.showQuickPick(filteredFiles, {title: "Variants", matchOnDescription: true, matchOnDetail: true})
-				.then(val => {
-					navigateToDefinition(val);
-				})
-				.then(undefined, err => {
-					;
-				});
+				.then(val => navigateToDefinition(val))
+				.then(undefined, err => {});
 			break;
 	}
 }
