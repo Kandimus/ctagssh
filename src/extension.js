@@ -302,49 +302,50 @@ async function loadRemoteCTags()
 				vscode.window.showQuickPick(ctagsFilesList, {title: "CTags: " + conf.ctagsFilesRemotePath, matchOnDescription: true, matchOnDetail: true})
 					.then(async val => {
 						
-						const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags);
+						if (undefined !== val) {
+
+							const localNewCTagsFile = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, conf.fileCtags);
 						
-						// change color
-						updateStatusBar(CTagSSHMode.RemoteDownload);
+							// change color
+							updateStatusBar(CTagSSHMode.RemoteDownload);
 
-						CTagSSH_VF.downloadRemoteFile(
-							pathPosix.join(conf.ctagsFilesRemotePath, val.filename), 
-							vscode.workspace.workspaceFolders[0].uri.fsPath)
-						.then(filename => {
-							try {
-								// remove old ctags file
-								fs.unlinkSync(localNewCTagsFile);
+							CTagSSH_VF.downloadRemoteFile(
+								pathPosix.join(conf.ctagsFilesRemotePath, val.filename), 
+								vscode.workspace.workspaceFolders[0].uri.fsPath)
+							.then(filename => {
+								try {
+									// remove old ctags file
+									fs.unlinkSync(localNewCTagsFile);
 
-								// rename new ctags
-								fs.renameSync(filename, localNewCTagsFile);
+									// rename new ctags
+									fs.renameSync(filename, localNewCTagsFile);
 
-								// read new ctags file into memory
-								readCTags(localNewCTagsFile);
-							} catch (err) {
+									// read new ctags file into memory
+									readCTags(localNewCTagsFile);
+								} catch (err) {
+									// revert color back
+									updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+									return Promise.reject(err);
+								}
+
 								// revert color back
 								updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
-								return Promise.reject(err);
-							}
+							})
+							.then(undefined, err => {
 
-							// revert color back
-							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
-						})
-						.then(undefined, err => {
-
-							// revert color back
-							updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
-							return Promise.reject(err.message);
-						});
+								// revert color back
+								updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
+								return Promise.reject(err.message);
+							});
+						}
 					})
 					.then(undefined, err => {
-						updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 						return Promise.reject(err.message);
 					});
 			})
 			.then(undefined, err => {
 				let a = "" + err;
 				console.error(`Can't read remote folder: ` + a);
-				updateStatusBar(CTagSSH_VF.isConnected ? CTagSSHMode.Connected : CTagSSHMode.NotConnected);
 				return Promise.reject(err.message);
 			});
 	}
