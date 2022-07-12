@@ -306,13 +306,18 @@ async function loadRemoteCTags()
 							// change color
 							updateStatusBar(CTagSSHMode.RemoteDownload);
 
-							CTagSSH_VF.downloadRemoteFile(
-								pathPosix.join(conf.ctagsFilesRemotePath, val.filename),
-								vscode.workspace.workspaceFolders[0].uri.fsPath)
-							.then(filename => {
+						CTagSSH_VF.downloadRemoteFile(
+							pathPosix.join(conf.ctagsFilesRemotePath, val.filename), 
+							vscode.workspace.workspaceFolders[0].uri.fsPath)
+						.then(filename => {
+							try {
+								// remove old ctags file
 								try {
-									// remove old ctags file
 									fs.unlinkSync(localNewCTagsFile);
+								} catch (err)
+								{
+									;
+								}
 
 									// rename new ctags
 									fs.renameSync(filename, localNewCTagsFile);

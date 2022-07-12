@@ -102,7 +102,7 @@ var CTagSSHVF = /** @class */ (function ()
 				return Promise.reject(`Bad ::downloadRemoteFile arguments`);
 			}
 
-			const rndCompressedFile = this.statTempFile + Utils.getRandomInt().toString(16);
+			const rndCompressedFile = this.statTempFile + '_' +Utils.getRandomInt(255).toString(16);
 			const rndFilename = pathPosix.basename(rndCompressedFile);
 			const compressExecLine = gzipExecLine(inputFile, rndCompressedFile);
 			const localTmpFile = path.join(localFolder, rndFilename + '.gz');
